@@ -10,6 +10,10 @@ const { Rect } = require('./classes/common/rect')
 const { Range } = require('./classes/common/range')
 const { Size } = require('./classes/common/size')
 
+const { DB } = require('./classes/db/db')
+const { Doc } = require('./classes/db/doc')
+const { Table } = require('./classes/db/table')
+
 // Check for littleEndian
 let b = new ArrayBuffer(4)
 let a = new Uint32Array(b)
@@ -82,6 +86,10 @@ class RCSClass {
   get storeProps () { return utils.storeProps }
   get restoreProps () { return utils.restoreProps }
 
+  get DB () { return DB }
+  get Doc () { return Doc }
+  get Table () { return Table }
+
   get main () {
     if (!_main) {
       _main = new Main()
@@ -136,4 +144,5 @@ _.isUUID = function (value) {
 const Main = require('./main')
 
 RCS.main.on('start', () => {
+
 })
