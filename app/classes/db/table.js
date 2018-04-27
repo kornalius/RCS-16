@@ -140,26 +140,28 @@ class Table extends Emitter {
     return result
   }
 
-  _formatData (doc) {
-    let d = _.get(doc, '_data')
-    if (!d) {
-      d = new Uint32Array(0)
+  _formatData (d) {
+    if (d instanceof Uint32Array) {
+      return d
     }
-    if (_.isString(d)) {
-      d = new Uint32Array(_.map(d, c => c.charCodeAt(0)))
+    if (!d) {
+      return new Uint32Array(0)
+    }
+    else if (_.isString(d)) {
+      return new Uint32Array(_.map(d, c => c.charCodeAt(0)))
+    }
+    else if (_.isNumber(d)) {
+      return new Uint32Array([d])
     }
     else if (_.isArray(d)) {
-      d = JSON.stringify(_.deref(d)).length
+      return this._formatData(JSON.stringify(_.deref(d)))
     }
-    _.set(doc, '_data', d)
+    return d
   }
 
   _calcSize (doc) {
     let d = _.get(doc, '_data')
-    if (d) {
-      return d.byteLength
-    }
-    return 0
+    return d ? d.length : 0
   }
 
   _ensureFields (doc) {
@@ -175,7 +177,7 @@ class Table extends Emitter {
       _.set(doc, '_created', _.get(doc, '_created', now))
       _.set(doc, '_attr', _.get(doc, '_attr', ''))
       _.set(doc, '_modified', now)
-      _.set(doc, '_data', this._formatData(doc))
+      _.set(doc, '_data', this._formatData(_.get(doc, '_data')))
       _.set(doc, '_size', this._calcSize(doc))
     }
   }

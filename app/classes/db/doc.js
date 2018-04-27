@@ -135,6 +135,18 @@ class Doc extends Emitter {
     return this.readable && !this.writable
   }
 
+  get data () {
+    return this._data
+  }
+
+  set data (value) {
+    value = this._table._formatData(value)
+    if (!this.readonly && this._data !== value) {
+      this._data = value
+      this.save()
+    }
+  }
+
   async children () {
     let f = await this._table.filter({ _path: this.dirname })
     return f.toArray()
