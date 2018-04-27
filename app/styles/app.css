@@ -1,0 +1,9 @@
+@import url(./colors.css);
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  color: var(--text-color);
+  background-color: var(--back-color);
+  margin: 0;
+}
