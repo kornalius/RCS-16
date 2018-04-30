@@ -13,6 +13,10 @@ const { Size } = require('./classes/common/size')
 const { DB } = require('./classes/db/db')
 const { Doc } = require('./classes/db/doc')
 const { Table } = require('./classes/db/table')
+const { FS } = require('./classes/db/fs')
+
+const { sizes } = require('./classes/memory')
+const { MemoryManager } = require('./classes/memorymanager')
 
 // Check for littleEndian
 let b = new ArrayBuffer(4)
@@ -23,6 +27,8 @@ a[0] = 0xdeadbeef
 const littleEndian = c[0] === 0xef
 
 let _main
+let _memoryManager
+let _fs
 let _scheduler
 
 class RCSClass {
@@ -89,12 +95,36 @@ class RCSClass {
   get DB () { return DB }
   get Doc () { return Doc }
   get Table () { return Table }
+  get FS () { return FS }
 
   get main () {
     if (!_main) {
       _main = new Main()
     }
     return _main
+  }
+
+  get fs () {
+    if (!_fs) {
+      _fs = new FS()
+    }
+    return _fs
+  }
+
+  get i8 () { return 'i8' }
+  get s8 () { return 's8' }
+  get i16 () { return 'i16' }
+  get s16 () { return 's16' }
+  get i32 () { return 'i32' }
+  get s32 () { return 's32' }
+  get f32 () { return 'f32' }
+  get str () { return 'str' }
+
+  get memoryManager () {
+    if (!_memoryManager) {
+      _memoryManager = new MemoryManager()
+    }
+    return _memoryManager
   }
 
   get scheduler () {
@@ -144,5 +174,5 @@ _.isUUID = function (value) {
 const Main = require('./main')
 
 RCS.main.on('start', () => {
-
+  RCS.main.boot()
 })

@@ -16,12 +16,12 @@ const ChildrenMixin = Mixin(superclass => class ChildrenMixin extends superclass
   }
 
   get root () {
-    let p = this._parent
+    let p = this.parent
     while (p) {
-      if (!p._parent) {
+      if (!p.parent) {
         break
       }
-      p = p._parent
+      p = p.parent
     }
     return p
   }

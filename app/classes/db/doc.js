@@ -1,8 +1,8 @@
 /**
- * @module classes
+ * @module classes/db
  */
 
-const { Emitter } = require('../../mixins/events')
+const { Emitter } = require('../../mixins/common/events')
 
 const _FOLDER = 'dir'
 

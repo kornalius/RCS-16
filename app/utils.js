@@ -35,6 +35,8 @@ const is = require('is_js')
 const micromatch = require('micromatch')
 const got = require('got')
 
+require('pixi.js')
+
 window._ = _
 _.extend(_, require('lodash'))
 _.extend(_, require('underscore-deep-extend'))

@@ -1,8 +1,8 @@
 /**
- * @module fs
+ * @module classes/db
  */
 
-const { Emitter } = require('../../mixins/events')
+const { Emitter } = require('../../mixins/common/events')
 const { Dexie } = require('../../utils')
 
 class DB extends Emitter {

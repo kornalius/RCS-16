@@ -2,13 +2,13 @@
  * @module app
  */
 
-const { EventsManager } = require('./mixins/common/events')
+const { Emitter } = require('./mixins/common/events')
 
 const _STOPPED = 0
 const _RUNNING = 1
 const _PAUSED = 2
 
-class Main extends mix(Object).with(EventsManager) {
+class Main extends Emitter {
 
   constructor () {
     super()
@@ -81,13 +81,21 @@ class Main extends mix(Object).with(EventsManager) {
     return Function(text)
   }
 
+  error (e) {
+    console.error(e.message)
+  }
+
   run (fn, ...args) {
     try {
       return fn(args)
     }
     catch (e) {
-      return undefined
+      return this.error(e)
     }
+  }
+
+  boot () {
+    require('./classes/api/index')
   }
 
 }

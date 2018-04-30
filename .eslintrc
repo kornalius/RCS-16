@@ -13,6 +13,7 @@
 
   "globals": {
     "RCS": false,
+    "PIXI": false,
     "is": false,
     "math": false,
     "_": false,
