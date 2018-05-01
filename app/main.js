@@ -15,6 +15,9 @@ class Main extends Emitter {
 
     this.reset()
     setTimeout(() => this.start())
+
+    this._tickBound = this.tick.bind(this)
+    PIXI.ticker.shared.add(this._tickBound)
   }
 
   reset () {
@@ -28,8 +31,17 @@ class Main extends Emitter {
     return this
   }
 
-  destroy () {
-    return this.clear()
+  shut () {
+    this.clear()
+
+    RCS.overlays.shut()
+    RCS.palette.shut()
+    RCS.text.shut()
+    RCS.sprite.shut()
+    RCS.video.shut()
+    RCS.mouse.shut()
+
+    RCS.memoryManager.shut()
   }
 
   get state () { return this._state }
@@ -94,8 +106,31 @@ class Main extends Emitter {
     }
   }
 
-  boot () {
+  tick (delta) {
+    if (this.state === _RUNNING) {
+      let t = performance.now()
+
+      RCS.mouse.tick(t, delta)
+      RCS.palette.tick(t, delta)
+      RCS.text.tick(t, delta)
+      RCS.sprite.tick(t, delta)
+      RCS.overlays.tick(t, delta)
+      RCS.video.tick(t, delta)
+
+      RCS.memoryManager.tick(t, delta)
+    }
+  }
+
+  async boot () {
     require('./classes/api/index')
+
+    await RCS.memoryManager.boot()
+    await RCS.text.boot()
+    await RCS.sprite.boot()
+    await RCS.palette.boot()
+    await RCS.mouse.boot()
+    await RCS.video.boot()
+    await RCS.overlays.boot()
   }
 
 }

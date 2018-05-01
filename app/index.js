@@ -173,6 +173,6 @@ _.isUUID = function (value) {
 
 const Main = require('./main')
 
-RCS.main.on('start', () => {
-  RCS.main.boot()
+RCS.main.on('start', async () => {
+  await RCS.main.boot()
 })

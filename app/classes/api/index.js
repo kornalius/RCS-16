@@ -2,24 +2,16 @@
  * @module classes/api
  */
 
-const { Video, stage, renderer } = require('./video')
+const { Video } = require('./video')
 const { Overlays } = require('./overlays')
 const { Palette } = require('./palette')
 const { Text } = require('./text')
 const { Sprite } = require('./sprite')
+const { Mouse } = require('./mouse')
 
-const video = new Video()
-const overlays = new Overlays()
-const palette = new Palette()
-const text = new Text()
-const sprite = new Sprite()
-
-module.exports = {
-  video,
-  stage,
-  renderer,
-  overlays,
-  palette,
-  text,
-  sprite,
-}
+RCS.video = new Video()
+RCS.palette = new Palette()
+RCS.text = new Text()
+RCS.sprite = new Sprite()
+RCS.mouse = new Mouse()
+RCS.overlays = new Overlays()

@@ -3,7 +3,6 @@
  */
 
 const { Emitter } = require('../../mixins/common/events')
-const { overlays, palette, text, sprite } = require('./index')
 
 PIXI.Point.prototype.distance = target => {
   Math.sqrt((this.x - target.x) * (this.x - target.x) + (this.y - target.y) * (this.y - target.y))
@@ -12,8 +11,8 @@ PIXI.Point.prototype.distance = target => {
 const VIDEO_WIDTH = 378
 const VIDEO_HEIGHT = 264
 
-let stage
-let renderer
+RCS.stage = new PIXI.Container()
+RCS.renderer = new PIXI.autoDetectRenderer(100, 100, null, { roundPixels: true, autoResize: true })
 
 class Video extends Emitter {
 
@@ -32,28 +31,24 @@ class Video extends Emitter {
     this._marginX = marginX
     this._marginY = marginY
 
-    this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
-
-    stage = new PIXI.Container()
-
-    renderer = new PIXI.autoDetectRenderer(this._width * this._scale + this._marginX, this._height * this._scale + this._marginY, null, { })
-    renderer.view.style.position = 'absolute'
-    renderer.view.style.top = Math.trunc(this._marginX / 2) + 'px'
-    renderer.view.style.left = Math.trunc(this._marginY / 2) + 'px'
+    RCS.renderer.resize(this._width * this._scale + this._marginX, this._height * this._scale + this._marginY)
+    RCS.renderer.view.style.position = 'absolute'
+    RCS.renderer.view.style.top = Math.trunc(this._marginX / 2) + 'px'
+    RCS.renderer.view.style.left = Math.trunc(this._marginY / 2) + 'px'
 
     window.addEventListener('resize', () => {
       // let ratio = Math.min(window.innerWidth / this.width, window.innerHeight / this.height)
-      // this.stage.scale.x = this.stage.scale.y = ratio
-      // renderer.resize(Math.ceil(this.width * ratio), Math.ceil(this.height * ratio))
-      renderer.view.style.left = window.innerWidth * 0.5 - renderer.width * 0.5 + 'px'
-      renderer.view.style.top = window.innerHeight * 0.5 - renderer.height * 0.5 + 'px'
+      // this.RCS.stage.scale.x = this.RCS.stage.scale.y = ratio
+      // RCS.renderer.resize(Math.ceil(this.width * ratio), Math.ceil(this.height * ratio))
+      RCS.renderer.view.style.left = window.innerWidth * 0.5 - RCS.renderer.width * 0.5 + 'px'
+      RCS.renderer.view.style.top = window.innerHeight * 0.5 - RCS.renderer.height * 0.5 + 'px'
 
       if (this.refresh) {
         this.refresh()
       }
     })
 
-    document.body.appendChild(renderer.view)
+    document.body.appendChild(RCS.renderer.view)
 
     this.reset()
 
@@ -75,36 +70,24 @@ class Video extends Emitter {
   get marginY () { return this._marginY }
 
   tick (t) {
-    overlays.tick(t)
-
     if (this.force_update) {
       this.force_update = false
-
-      palette.tick(t)
-      text.tick(t)
-      sprite.tick(t)
-
       if (this.force_flip) {
         this.flip()
       }
+      RCS.renderer.render(RCS.stage)
+    }
+  }
 
-      renderer.render(stage)
+  async boot (cold = true) {
+    this.clear()
+    if (cold) {
+      this.reset()
+      this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
     }
   }
 
   reset () {
-    if (overlays) {
-      overlays.reset()
-    }
-    if (palette) {
-      palette.reset()
-    }
-    if (sprite) {
-      sprite.reset()
-    }
-    if (text) {
-      text.reset()
-    }
     this.clear()
   }
 
@@ -116,34 +99,25 @@ class Video extends Emitter {
   }
 
   clear () {
-    this.array.fill(0)
-    this.refresh()
+    if (this._buffer) {
+      this.array.fill(0)
+      this.refresh()
+    }
   }
 
   shut () {
-    palette.shut()
-    text.shut()
-    sprite.shut()
-    overlays.shut()
-
     this._buffer.free()
     this._buffer = undefined
-
-    stage.destroy()
-    stage = undefined
-
-    renderer.destroy()
-    renderer = undefined
   }
 
   flip () {
-    let screenOverlay = this.screen
+    let screenOverlay = RCS.overlays.screen
     let data = screenOverlay.context.getImageData(0, 0, screenOverlay.width, screenOverlay.height)
     let pixels = new Uint32Array(data.data.buffer)
 
     let mem = this.array
     for (let i = 0; i < this.size; i++) {
-      pixels[i] = this._palette.get(mem[i])
+      pixels[i] = RCS.palette.get(mem[i])
     }
 
     screenOverlay.context.putImageData(data, 0, 0)
@@ -181,6 +155,4 @@ module.exports = {
   Video,
   VIDEO_WIDTH,
   VIDEO_HEIGHT,
-  stage,
-  renderer,
 }

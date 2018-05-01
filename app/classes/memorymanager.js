@@ -22,14 +22,25 @@ class MemoryManager {
     }
   }
 
-  reset () {
-    this.collect()
+  async boot (cold = true) {
+    this.clear()
+    if (cold) {
+      this.reset()
+    }
   }
 
-  destroy () {
-    this.collect()
+  clear () {
     this._blocks = []
     this._last = 0
+  }
+
+  reset () {
+    this.collect()
+    this.clear()
+  }
+
+  shut () {
+    this.reset()
   }
 
   get avail_mem () { return RAM_SIZE }
@@ -81,7 +92,7 @@ class MemoryManager {
 
     let addr = n + 1
 
-    let block = new MemBlock(type, addr, size * count)
+    let block = new MemBlock(type, addr, count)
     block.active = true
     this._blocks.push(block)
 

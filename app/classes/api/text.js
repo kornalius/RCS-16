@@ -3,8 +3,7 @@
  */
 
 const { Emitter } = require('../../mixins/common/events')
-const { video, overlays } = require('./index')
-const { fs } = require('../../utils')
+const { fs, path } = require('../../utils')
 
 class BDF {
 
@@ -135,14 +134,11 @@ class Text extends Emitter {
     this._chr_offset_y = char_offsetY
     this._chr_size = this._chr_width * this._chr_height
 
-    this._width = Math.round(video.width / this._chr_width)
-    this._height = Math.round(video.height / this._chr_height)
+    this._width = Math.round(RCS.video.width / this._chr_width)
+    this._height = Math.round(RCS.video.height / this._chr_height)
     this._size = this._width * this._height * 3
 
     this._fnt_size = this._chr_count * this._chr_size
-
-    this._fnt_buffer = RCS.memoryManager.alloc(RCS.i8, this._fnt_size)
-    this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
   }
 
   get buffer () { return this._buffer }
@@ -164,16 +160,32 @@ class Text extends Emitter {
   get size () { return this._size }
 
   tick (t) {
-    if (video.force_update) {
+    if (RCS.video.force_update) {
       this.draw()
-      video.force_update = false
+      RCS.video.force_update = false
+    }
+  }
+
+  async boot (cold = true) {
+    this.clear()
+    if (cold) {
+      this._fnt_buffer = RCS.memoryManager.alloc(RCS.i8, this._fnt_size)
+      this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
+      await this.reset()
     }
   }
 
   async reset () {
-    video.force_update = false
+    RCS.video.force_update = false
     this.clear()
     return this.load_fnt()
+  }
+
+  clear () {
+    if (this._buffer) {
+      this.array.fill(0)
+      this.refresh()
+    }
   }
 
   shut () {
@@ -186,7 +198,7 @@ class Text extends Emitter {
 
   async load_fnt () {
     let b = new BDF()
-    let ff = await fs.readFile('../../../fonts/ctrld-fixed-10r.bdf')
+    let ff = await fs.readFile('../fonts/ctrld-fixed-10r.bdf', 'utf-8')
     b.load(ff)
 
     // let points = b.meta.size.points
@@ -222,7 +234,7 @@ class Text extends Emitter {
     let ch = this._chr_height
     let tw = this._width
     let th = this._height
-    let w = video.width
+    let w = RCS.video.width
     let fnt_sz = this._chr_size
 
     var fnt_mem = this.fnt_array
@@ -243,7 +255,7 @@ class Text extends Emitter {
           for (let by = 0; by < ch; by++) {
             let pi = (py + by) * w + px
             for (let bx = 0; bx < cw; bx++) {
-              video.pixel(pi++, fnt_mem[ptr++] ? fg : bg)
+              RCS.video.pixel(pi++, fnt_mem[ptr++] ? fg : bg)
             }
           }
         }
@@ -253,8 +265,8 @@ class Text extends Emitter {
   }
 
   refresh (flip = true) {
-    video.refresh(flip)
-    video.force_update = true
+    RCS.video.refresh(flip)
+    RCS.video.force_update = true
   }
 
   index (x, y) {
@@ -286,8 +298,8 @@ class Text extends Emitter {
     let { x, y } = this.pos()
     this.array.set([ch.charCodeAt(0), fg, bg], this.index(x, y))
 
-    overlays.textCursor.x++
-    if (overlays.textCursor.x > this._width) {
+    RCS.overlays.textCursor.x++
+    if (RCS.overlays.textCursor.x > this._width) {
       this.cr()
     }
 
@@ -301,7 +313,7 @@ class Text extends Emitter {
     return this
   }
 
-  pos () { return { x: overlays.textCursor.x, y: overlays.textCursor.y } }
+  pos () { return { x: RCS.overlays.textCursor.x, y: RCS.overlays.textCursor.y } }
 
   move_to (x, y) {
     if (x > this._width) {
@@ -317,17 +329,17 @@ class Text extends Emitter {
       y = 1
     }
 
-    overlays.textCursor.x = x
-    overlays.textCursor.y = y
+    RCS.overlays.textCursor.x = x
+    RCS.overlays.textCursor.y = y
 
     this.refresh(false)
   }
 
-  move_by (x, y) { return this.move_to(overlays.textCursor.x + x, overlays.textCursor.y + y) }
+  move_by (x, y) { return this.move_to(RCS.overlays.textCursor.x + x, RCS.overlays.textCursor.y + y) }
 
-  bol () { return this.move_to(1, overlays.textCursor.y) }
+  bol () { return this.move_to(1, RCS.overlays.textCursor.y) }
 
-  eol () { return this.move_to(this._width, overlays.textCursor.y) }
+  eol () { return this.move_to(this._width, RCS.overlays.textCursor.y) }
 
   bos () { return this.move_to(1, 1) }
 
@@ -335,22 +347,17 @@ class Text extends Emitter {
 
   bs () { this.left(); this.put_char(' '); return this.left() }
 
-  cr () { return this.move_to(1, overlays.textCursor.y + 1) }
+  cr () { return this.move_to(1, RCS.overlays.textCursor.y + 1) }
 
-  lf () { return this.move_to(overlays.textCursor.x, overlays.textCursor.y + 1) }
+  lf () { return this.move_to(RCS.overlays.textCursor.x, RCS.overlays.textCursor.y + 1) }
 
-  up () { return this.move_to(overlays.textCursor.x, overlays.textCursor.y - 1) }
+  up () { return this.move_to(RCS.overlays.textCursor.x, RCS.overlays.textCursor.y - 1) }
 
-  left () { return this.move_to(overlays.textCursor.x - 1, overlays.textCursor.y) }
+  left () { return this.move_to(RCS.overlays.textCursor.x - 1, RCS.overlays.textCursor.y) }
 
-  down () { return this.move_to(overlays.textCursor.x, overlays.textCursor.y + 1) }
+  down () { return this.move_to(RCS.overlays.textCursor.x, RCS.overlays.textCursor.y + 1) }
 
-  right () { return this.move_to(overlays.textCursor.x + 1, overlays.textCursor.y) }
-
-  clear () {
-    this.array.fill(0)
-    this.refresh()
-  }
+  right () { return this.move_to(RCS.overlays.textCursor.x + 1, RCS.overlays.textCursor.y) }
 
   clear_eol () {
     let { x, y } = this.pos()

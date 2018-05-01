@@ -3,7 +3,6 @@
  */
 
 const { Emitter } = require('../../mixins/common/events')
-const { video, palette, overlays } = require('./index')
 
 const SPRITE_MAX = 128
 const SPRITE_SIZE = 64
@@ -17,14 +16,13 @@ class Sprite extends Emitter {
     this._width = SPRITE_SIZE
     this._height = SPRITE_SIZE
     this._size = this._width * this._height
-    this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size * SPRITE_MAX)
 
     this._canvas = []
     this._context = []
     this._texture = []
 
     for (let i = 0; i < SPRITE_MAX; i++) {
-      let c = new PIXI.CanvasBuffer(this._width, this._height)
+      let c = new PIXI.CanvasRenderTarget(this._width, this._height)
       let ctx = c.canvas.getContext('2d', { alpha: true, antialias: false })
       let t = PIXI.Texture.fromCanvas(c.canvas, PIXI.SCALE_MODES.NEAREST)
       t.scaleMode = PIXI.SCALE_MODES.NEAREST
@@ -42,9 +40,9 @@ class Sprite extends Emitter {
   get size () { return this._size }
 
   tick (t) {
-    if (video.force_update) {
+    if (RCS.video.force_update) {
       this.draw()
-      video.force_update = false
+      RCS.video.force_update = false
     }
   }
 
@@ -74,16 +72,24 @@ class Sprite extends Emitter {
     for (let by = 0; by < sh; by++) {
       let pi = by * sw
       for (let bx = 0; bx < sw; bx++) {
-        pixels[pi++] = palette[mem[ptr++]]
+        pixels[pi++] = RCS.palette[mem[ptr++]]
       }
     }
     ctx.putImageData(data, 0, 0)
 
     let uid = this._texture[idx].uid
-    for (let s of overlays.sprite.children) {
+    for (let s of RCS.overlays.sprite.children) {
       if (s.texture.uid === uid) {
         s.texture.update()
       }
+    }
+  }
+
+  async boot (cold = true) {
+    this.clear()
+    if (cold) {
+      this.reset()
+      this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size * SPRITE_MAX)
     }
   }
 
@@ -92,11 +98,13 @@ class Sprite extends Emitter {
   }
 
   clear () {
-    this.array.fill(0)
-    for (let i = 0; i < SPRITE_MAX; i++) {
-      this.update(i)
+    if (this._buffer) {
+      this.array.fill(0)
+      for (let i = 0; i < SPRITE_MAX; i++) {
+        this.update(i)
+      }
+      RCS.video.refresh(true)
     }
-    video.refresh(true)
   }
 
   shut () {
@@ -105,7 +113,7 @@ class Sprite extends Emitter {
   }
 
   find (name) {
-    for (let s of overlays.stage.children) {
+    for (let s of RCS.overlays.stage.children) {
       if (s.__name === name) {
         return s
       }
@@ -117,13 +125,13 @@ class Sprite extends Emitter {
     let s = new PIXI.Sprite(this._texture[idx])
     s.position = new PIXI.Point(x, y)
     s.__name = name
-    overlays.sprite.addChild(s)
+    RCS.overlays.sprite.addChild(s)
   }
 
   del (name) {
     let s = this.find(name)
     if (s) {
-      overlays.sprite.removeChild(s)
+      RCS.overlays.sprite.removeChild(s)
     }
   }
 
@@ -134,7 +142,7 @@ class Sprite extends Emitter {
       if (z) {
         s.z = z
       }
-      video.refresh(false)
+      RCS.video.refresh(false)
     }
   }
 
@@ -142,8 +150,12 @@ class Sprite extends Emitter {
     let s = this.find(name)
     if (s) {
       s.position = new PIXI.Point(s.position.x + x, s.position.y + y)
-      video.refresh(false)
+      RCS.video.refresh(false)
     }
+  }
+
+  removeAll () {
+    RCS.overlays.sprite.removeChildren()
   }
 
 }

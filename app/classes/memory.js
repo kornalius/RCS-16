@@ -66,7 +66,7 @@ class MemBlock {
   get array () { return this._array }
   get view () { return this._view }
 
-  get active () { return this.active }
+  get active () { return this._active }
   set active (value) {
     if (value !== this._active) {
       this._active = value
