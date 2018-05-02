@@ -59,7 +59,6 @@ class MemoryManager {
 
   alloc (type, count, ...value) {
     count = count || 1
-    count = Math.ceil(count / 4) * 4
     let size = sizeOf(type) * count
     let n = 0
 

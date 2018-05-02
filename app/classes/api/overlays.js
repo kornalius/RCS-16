@@ -442,13 +442,13 @@ class Overlays extends Emitter {
     this.sprite.sprite.scale = new PIXI.Point(scale, scale)
     RCS.stage.addChild(this.sprite.sprite)
 
-    this.mouseCursor = new MouseCursorOverlay(RCS.sprite.width, RCS.sprite.height)
-    this.mouseCursor.sprite.scale = new PIXI.Point(scale, scale)
-    RCS.stage.addChild(this.mouseCursor.sprite)
-
     this.screen = new ScreenOverlay(RCS.video.width, RCS.video.height)
     this.screen.sprite.scale = new PIXI.Point(scale, scale)
     RCS.stage.addChild(this.screen.sprite)
+
+    this.mouseCursor = new MouseCursorOverlay(RCS.sprite.width, RCS.sprite.height)
+    this.mouseCursor.sprite.scale = new PIXI.Point(scale, scale)
+    RCS.stage.addChild(this.mouseCursor.sprite)
 
     this.scanlines = new ScanlinesOverlay(width, height)
     RCS.stage.addChild(this.scanlines.sprite)

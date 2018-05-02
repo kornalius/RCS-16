@@ -126,8 +126,14 @@ class Mouse extends Emitter {
       cursor.x = x
       cursor.y = y
 
+      this._updateBuffer()
+
       RCS.video.refresh(false)
     }
+  }
+
+  _updateBuffer () {
+    this.array.set([this._x, this._y, this._btns], 0)
   }
 
 }

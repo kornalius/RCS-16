@@ -35,6 +35,9 @@ const sizeOf = function (type, value) {
 class MemBlock {
 
   constructor (type, offset, size) {
+    offset = Math.ceil(offset / 4) * 4
+    size = Math.ceil(size / 4) * 4
+
     this._size = size || 1
     this._top = offset || 0
     this._active = true

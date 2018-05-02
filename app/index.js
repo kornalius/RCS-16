@@ -18,6 +18,8 @@ const { FS } = require('./classes/db/fs')
 const { sizes } = require('./classes/memory')
 const { MemoryManager } = require('./classes/memorymanager')
 
+const { Test } = require('./test')
+
 // Check for littleEndian
 let b = new ArrayBuffer(4)
 let a = new Uint32Array(b)
@@ -175,4 +177,7 @@ const Main = require('./main')
 
 RCS.main.on('start', async () => {
   await RCS.main.boot()
+
+  let test = new Test()
+  test.start()
 })
