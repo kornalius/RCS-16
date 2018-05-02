@@ -59,6 +59,7 @@ class MemoryManager {
 
   alloc (type, count, ...value) {
     count = count || 1
+    count = Math.ceil(count / 4) * 4
     let size = sizeOf(type) * count
     let n = 0
 
@@ -90,7 +91,7 @@ class MemoryManager {
       return undefined
     }
 
-    let addr = n + 1
+    let addr = n
 
     let block = new MemBlock(type, addr, count)
     block.active = true

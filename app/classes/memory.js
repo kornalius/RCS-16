@@ -2,7 +2,7 @@ const hexy = require('hexy')
 const { hex, littleEndian } = require('../utils.js')
 
 const RAM_SIZE = 4 * 1024 * 1024
-const RAM = new Uint8Array(RAM_SIZE)
+const RAM = new ArrayBuffer(RAM_SIZE)
 
 const sizes = {
   i8: 1,

@@ -111,18 +111,20 @@ class Video extends Emitter {
   }
 
   flip () {
-    let screenOverlay = RCS.overlays.screen
-    let data = screenOverlay.context.getImageData(0, 0, screenOverlay.width, screenOverlay.height)
-    let pixels = new Uint32Array(data.data.buffer)
+    if (this._buffer && RCS.palette.buffer) {
+      let screenOverlay = RCS.overlays.screen
+      let data = screenOverlay.context.getImageData(0, 0, screenOverlay.width, screenOverlay.height)
+      let pixels = new Uint32Array(data.data.buffer)
 
-    let mem = this.array
-    for (let i = 0; i < this.size; i++) {
-      pixels[i] = RCS.palette.get(mem[i])
+      let mem = this.array
+      for (let i = 0; i < this.size; i++) {
+        pixels[i] = RCS.palette.get(mem[i])
+      }
+
+      screenOverlay.context.putImageData(data, 0, 0)
+
+      this.force_flip = false
     }
-
-    screenOverlay.context.putImageData(data, 0, 0)
-
-    this.force_flip = false
   }
 
   pixel (i, c) {

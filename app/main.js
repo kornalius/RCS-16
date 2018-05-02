@@ -125,11 +125,11 @@ class Main extends Emitter {
     require('./classes/api/index')
 
     await RCS.memoryManager.boot()
+    await RCS.video.boot()
     await RCS.text.boot()
     await RCS.sprite.boot()
     await RCS.palette.boot()
     await RCS.mouse.boot()
-    await RCS.video.boot()
     await RCS.overlays.boot()
   }
 
