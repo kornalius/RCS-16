@@ -198,7 +198,7 @@ class Text extends Emitter {
 
   async load_fnt () {
     let b = new BDF()
-    let ff = await fs.readFile('./fonts/ctrld-fixed-10r.bdf', 'utf-8')
+    let ff = await fs.readFile('../fonts/ctrld-fixed-10r.bdf', 'utf-8')
     b.load(ff)
 
     // let points = b.meta.size.points
@@ -245,8 +245,8 @@ class Text extends Emitter {
       for (let x = 0; x < tw; x++) {
         let c = mem[idx]
         if (c) {
-          let fg = mem[idx + 1]
-          let bg = mem[idx + 2]
+          let fg = mem[idx + 1] ? 2 : 0
+          let bg = mem[idx + 2] ? 2 : 0
 
           let px = x * cw
           let py = y * ch

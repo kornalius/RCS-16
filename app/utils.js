@@ -283,6 +283,26 @@ const buffer_dump = function (buffer, options = {}) {
   return str
 }
 
+const strings_to_buffer = function (arr, def, width, height) {
+  let buf = new Uint8Array(width * height)
+  let ptr = 0
+  for (let y = 0; y < height; y++) {
+    let l = _.get(arr, y)
+    let len = l ? l.length : 0
+    for (let x = 0; x < width; x++) {
+      if (l && x < len) {
+        let c = l[x]
+        let d = def[c]
+        if (!_.isUndefined(d)) {
+          buf[ptr] = d
+        }
+      }
+      ptr++
+    }
+  }
+  return buf
+}
+
 const flatten = function (obj, paths = []) {
   let r = {}
 
@@ -700,6 +720,7 @@ module.exports = {
   buffer_to_string_hex,
   hex_string_to_buffer,
   string_buffer,
+  strings_to_buffer,
   hex,
   buffer_dump,
   utoa,

@@ -53,11 +53,7 @@ class Mouse extends Emitter {
     this.clear()
 
     let renderer = RCS.renderer
-    let marginX = RCS.video.marginX
-    let marginY = RCS.video.marginY
-    let cursor = RCS.overlays.mouseCursor
-
-    this._size = new PIXI.Point(renderer.width - marginX / 2 - cursor.sprite.width, renderer.height - marginY / 2 - cursor.sprite.height)
+    this._size = new PIXI.Point(renderer.width - RCS.video.marginX / 2, renderer.height - RCS.video.marginY / 2)
   }
 
   tick (t) {

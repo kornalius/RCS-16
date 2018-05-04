@@ -324,11 +324,10 @@ class TextCursorOverlay extends Overlay {
     super.reset()
 
     let data = this._context.getImageData(0, 0, this._width, this._height)
-    let pixels = data.data
-    let len = pixels.length
-    let c = RCS.palette.get(1)
-    for (let i = 0; i < len; i += 4) {
-      pixels.set([c >> 24 & 0xFF, c >> 16 & 0xFF, c >> 8 & 0xFF, c & 0xFF], i)
+    let pixels = new Uint32Array(data.data.buffer)
+    let c = RCS.palette.get(9)
+    for (let i = 0; i < this._width * this._height; i++) {
+      pixels[i] = c
     }
     this._context.putImageData(data, 0, 0)
   }
@@ -375,15 +374,23 @@ class MouseCursorOverlay extends Overlay {
   reset () {
     super.reset()
 
+    let buf = RCS.strings_to_buffer([
+      'X',
+      'XX',
+      'X@X',
+      'X@@X',
+      'X@@@X',
+      'X@@@@X',
+      'X@@@@@X',
+      'X@@XXXX',
+      'X@X',
+      'XX',
+    ], { X: 1, '@': 2 }, this._width, this._height)
+
     let data = this._context.getImageData(0, 0, this._width, this._height)
-    let pixels = data.data
-    let len = pixels.length
-
-    let c = RCS.palette.get(15)
-    console.log(c, c >> 24 & 0xFF, c >> 16 & 0xFF, c >> 8 & 0xFF, c & 0xFF)
-
-    for (let i = 0; i < len; i += 4) {
-      pixels.set([c >> 24 & 0xFF, c >> 16 & 0xFF, c >> 8 & 0xFF, c & 0xFF], i)
+    let pixels = new Uint32Array(data.data.buffer)
+    for (let i = 0; i < this._width * this._height; i++) {
+      pixels[i] = RCS.palette.get(buf[i])
     }
     this._context.putImageData(data, 0, 0)
   }

@@ -34,6 +34,10 @@ let _fs
 let _scheduler
 
 class RCSClass {
+  constructor () {
+    this.littleEndian = true
+  }
+
   get DIRS () { return utils.dirs }
   get app () { return utils.app }
   get userPath () { return utils.userPath }
@@ -93,6 +97,14 @@ class RCSClass {
 
   get storeProps () { return utils.storeProps }
   get restoreProps () { return utils.restoreProps }
+
+  get buffer_to_string () { return utils.buffer_to_string }
+  get buffer_to_string_hex () { return utils.buffer_to_string_hex }
+  get hex_string_to_buffer () { return utils.hex_string_to_buffer }
+  get string_buffer () { return utils.string_buffer }
+  get strings_to_buffer () { return utils.strings_to_buffer }
+  get hex () { return utils.hex }
+  get buffer_dump () { return utils.buffer_dump }
 
   get DB () { return DB }
   get Doc () { return Doc }
