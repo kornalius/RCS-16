@@ -65,8 +65,8 @@ class ScreenOverlay extends Overlay {
   reset () {
     super.reset()
 
-    // this._sprite.x = RCS.monitor.offsetX + RCS.monitor.marginX / 2
-    // this._sprite.y = RCS.monitor.offsetY + RCS.monitor.marginY / 2
+    this._sprite.x = RCS.video.offsetX + RCS.video.marginX / 2
+    this._sprite.y = RCS.video.offsetY + RCS.video.marginY / 2
   }
 
 }
@@ -83,8 +83,8 @@ class SpriteOverlay extends Overlay {
   reset () {
     super.reset()
 
-    // this._sprite.x = RCS.monitor.offsetX + RCS.monitor.marginX / 2
-    // this._sprite.y = RCS.monitor.offsetY + RCS.monitor.marginY / 2
+    this._sprite.x = RCS.video.offsetX + RCS.video.marginX / 2
+    this._sprite.y = RCS.video.offsetY + RCS.video.marginY / 2
   }
 
 }
@@ -123,7 +123,7 @@ class ScanlinesOverlay extends Overlay {
 
 class ScanlineOverlay extends Overlay {
 
-  constructor (width, height, refresh = 50, alpha = 16, speed = 0.1) {
+  constructor (width, height, refresh = 50, alpha = 0.1, speed = 16) {
     super(width, height)
 
     this._refresh = refresh
@@ -349,8 +349,8 @@ class TextCursorOverlay extends Overlay {
   }
 
   update () {
-    this._sprite.x = (this._x - 1) * this._sprite.width + _.get(RCS, 'monitor.offsetX', 0) + RCS.text.offsetX + _.get(RCS, 'monitor.marginX', 0) * 0.5
-    this._sprite.y = (this._y - 1) * this._sprite.height + _.get(RCS, 'monitor.offsetY', 0) + RCS.text.offsetY + _.get(RCS, 'monitor.marginY', 0) * 0.5
+    this._sprite.x = (this._x - 1) * this._sprite.width + RCS.video.offsetX + RCS.text.offsetX + RCS.video.marginX * 0.5
+    this._sprite.y = (this._y - 1) * this._sprite.height + RCS.video.offsetY + RCS.text.offsetY + RCS.video.marginY * 0.5
     super.update()
   }
 
@@ -420,8 +420,8 @@ class MouseCursorOverlay extends Overlay {
   }
 
   update () {
-    this._sprite.x = (this._x + this._offsetX) * this._sprite.scale.x + _.get(RCS, 'monitor.offsetX', 0)
-    this._sprite.y = (this._y + this._offsetY) * this._sprite.scale.y + _.get(RCS, 'monitor.offsetY', 0)
+    this._sprite.x = (this._x + this._offsetX) * this._sprite.scale.x
+    this._sprite.y = (this._y + this._offsetY) * this._sprite.scale.y
     super.update()
   }
 
@@ -436,8 +436,8 @@ class Overlays extends Emitter {
     let width = RCS.renderer.width
     let height = RCS.renderer.height
     let scale = RCS.video.scale
-    // let marginX = RCS.video.marginX
-    // let marginY = RCS.video.marginY
+    let marginX = RCS.video.marginX
+    let marginY = RCS.video.marginY
 
     this._overlays = ['screen', 'sprite', 'textCursor', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
 
@@ -471,13 +471,13 @@ class Overlays extends Emitter {
     this.crt = new CrtOverlay(width, height)
     RCS.stage.addChild(this.crt.sprite)
 
-    // let tex = PIXI.Texture.fromImage(require('file?name=[path]/[name].[ext]!../../../../imgs/crt.png'))
-    // this.monitor = new PIXI.Sprite(tex)
-    // this.monitor.width = width + marginX
-    // this.monitor.height = height + marginY
-    // this.monitor.x = marginX / -2
-    // this.monitor.y = marginY / -2
-    // RCS.stage.addChild(this.monitor)
+    let tex = PIXI.Texture.fromImage('../imgs/crt.png')
+    this.monitor = new PIXI.Sprite(tex)
+    this.monitor.width = width + marginX
+    this.monitor.height = height + marginY * 0.25
+    this.monitor.x = marginX * -0.5
+    this.monitor.y = marginY * -0.5
+    RCS.stage.addChild(this.monitor)
   }
 
   tick (t) {
