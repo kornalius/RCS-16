@@ -109,8 +109,8 @@ class Mouse extends Emitter {
   onMouseMove (e) {
     if (this._size) {
       let size = this._size
-      let marginX = RCS.video.marginX * 0.25
-      let marginY = RCS.video.marginY * 0.25
+      let marginX = RCS.video.marginX
+      let marginY = RCS.video.marginY
       let cursor = RCS.overlays.mouseCursor
 
       let x = Math.trunc(Math.min(size.x + marginX, Math.max(marginX, e.data.global.x)) / cursor.sprite.scale.x)

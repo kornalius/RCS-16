@@ -198,7 +198,7 @@ class Text extends Emitter {
 
   async load_fnt () {
     let b = new BDF()
-    let ff = await fs.readFile('../fonts/ctrld-fixed-10r.bdf', 'utf-8')
+    let ff = await fs.readFile(RCS.DIRS.cwd + '/fonts/ctrld-fixed-10r.bdf', 'utf-8')
     b.load(ff)
 
     // let points = b.meta.size.points

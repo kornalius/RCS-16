@@ -6,11 +6,13 @@ const { Emitter } = require('../../mixins/common/events')
 
 class Overlay extends Emitter {
 
-  constructor (width, height) {
+  constructor (width, height, offsetX = 0, offsetY = 0) {
     super()
 
     this._width = width
     this._height = height
+    this._offsetX = offsetX
+    this._offsetY = offsetY
     this._last = 0
   }
 
@@ -38,6 +40,10 @@ class Overlay extends Emitter {
   }
 
   reset () {
+    if (this._sprite) {
+      this._sprite.x = this._offsetX
+      this._sprite.y = this._offsetY
+    }
   }
 
   shut () {
@@ -56,17 +62,10 @@ class Overlay extends Emitter {
 
 class ScreenOverlay extends Overlay {
 
-  constructor (width, height) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY) {
+    super(width, height, offsetX, offsetY)
 
     this.create()
-  }
-
-  reset () {
-    super.reset()
-
-    this._sprite.x = RCS.video.offsetX + RCS.video.marginX / 2
-    this._sprite.y = RCS.video.offsetY + RCS.video.marginY / 2
   }
 
 }
@@ -74,17 +73,10 @@ class ScreenOverlay extends Overlay {
 
 class SpriteOverlay extends Overlay {
 
-  constructor (width, height) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY) {
+    super(width, height, offsetX, offsetY)
 
     this.create()
-  }
-
-  reset () {
-    super.reset()
-
-    this._sprite.x = RCS.video.offsetX + RCS.video.marginX / 2
-    this._sprite.y = RCS.video.offsetY + RCS.video.marginY / 2
   }
 
 }
@@ -92,8 +84,8 @@ class SpriteOverlay extends Overlay {
 
 class ScanlinesOverlay extends Overlay {
 
-  constructor (width, height, gap = 3, alpha = 0.35) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, gap = 3, alpha = 0.35) {
+    super(width, height, offsetX, offsetY)
 
     this._gap = gap
     this._alpha = alpha
@@ -123,8 +115,8 @@ class ScanlinesOverlay extends Overlay {
 
 class ScanlineOverlay extends Overlay {
 
-  constructor (width, height, refresh = 50, alpha = 0.1, speed = 16) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, refresh = 50, alpha = 0.1, speed = 16) {
+    super(width, height, offsetX, offsetY)
 
     this._refresh = refresh
     this._speed = speed
@@ -153,7 +145,7 @@ class ScanlineOverlay extends Overlay {
     }
     this._context.putImageData(data, 0, 0)
 
-    this._sprite.y = -this._sprite.height
+    this._sprite.y = -this._sprite.height + this._offsetY
   }
 
   tick (t) {
@@ -173,8 +165,8 @@ class ScanlineOverlay extends Overlay {
 
 class NoisesOverlay extends Overlay {
 
-  constructor (width, height, refresh = 250, count = 8, rate = 0.85, red = 100, green = 100, blue = 100, alpha = 0.15) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, refresh = 250, count = 8, rate = 0.85, red = 100, green = 100, blue = 100, alpha = 0.15) {
+    super(width, height, offsetX, offsetY)
 
     this._refresh = refresh
     this._count = count
@@ -249,8 +241,8 @@ class NoisesOverlay extends Overlay {
 
 class RgbOverlay extends Overlay {
 
-  constructor (width, height, alpha = 0.075) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, alpha = 0.075) {
+    super(width, height, offsetX, offsetY)
 
     this._alpha = alpha
 
@@ -274,8 +266,8 @@ class RgbOverlay extends Overlay {
 
 class CrtOverlay extends Overlay {
 
-  constructor (width, height, radius = 0.25, inside_alpha = 0.2, outside_alpha = 0.15) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, radius = 0.25, inside_alpha = 0.2, outside_alpha = 0.15) {
+    super(width, height, offsetX, offsetY)
 
     this._radius = radius
     this._inside_alpha = inside_alpha
@@ -301,8 +293,8 @@ class CrtOverlay extends Overlay {
 
 class TextCursorOverlay extends Overlay {
 
-  constructor (width, height, refresh = 500) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, refresh = 500) {
+    super(width, height, offsetX, offsetY)
 
     this._refresh = refresh
     this._x = 1
@@ -349,8 +341,8 @@ class TextCursorOverlay extends Overlay {
   }
 
   update () {
-    this._sprite.x = (this._x - 1) * this._sprite.width + RCS.video.offsetX + RCS.text.offsetX + RCS.video.marginX * 0.5
-    this._sprite.y = (this._y - 1) * this._sprite.height + RCS.video.offsetY + RCS.text.offsetY + RCS.video.marginY * 0.5
+    this._sprite.x = (this._x - 1) * this._sprite.width + RCS.text.offsetX + this._offsetX
+    this._sprite.y = (this._y - 1) * this._sprite.height + RCS.text.offsetY + this._offsetY
     super.update()
   }
 
@@ -359,12 +351,10 @@ class TextCursorOverlay extends Overlay {
 
 class MouseCursorOverlay extends Overlay {
 
-  constructor (width, height, refresh = 5, offsetX = 0, offsetY = 0) {
-    super(width, height)
+  constructor (width, height, offsetX, offsetY, refresh = 5) {
+    super(width, height, offsetX, offsetY)
 
     this._refresh = refresh
-    this._offsetX = offsetX
-    this._offsetY = offsetY
     this._x = 0
     this._y = 0
 
@@ -420,8 +410,8 @@ class MouseCursorOverlay extends Overlay {
   }
 
   update () {
-    this._sprite.x = (this._x + this._offsetX) * this._sprite.scale.x
-    this._sprite.y = (this._y + this._offsetY) * this._sprite.scale.y
+    this._sprite.x = this._x * this._sprite.scale.x + this._offsetX
+    this._sprite.y = this._y * this._sprite.scale.y + this._offsetY
     super.update()
   }
 
@@ -471,12 +461,10 @@ class Overlays extends Emitter {
     this.crt = new CrtOverlay(width, height)
     RCS.stage.addChild(this.crt.sprite)
 
-    let tex = PIXI.Texture.fromImage('../imgs/crt.png')
+    let tex = PIXI.Texture.fromImage(RCS.DIRS.cwd + '/imgs/crt.png')
     this.monitor = new PIXI.Sprite(tex)
-    this.monitor.width = width + marginX
-    this.monitor.height = height + marginY * 0.25
-    this.monitor.x = marginX * -0.5
-    this.monitor.y = marginY * -0.5
+    this.monitor.width = width
+    this.monitor.height = height
     RCS.stage.addChild(this.monitor)
   }
 

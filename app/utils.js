@@ -105,6 +105,8 @@ const dirs = {
   packages: path.join(userPath, 'package.json'),
 }
 
+console.info(dirs)
+
 const p = function (...args) {
   return path.join(__dirname, ...args)
 }
