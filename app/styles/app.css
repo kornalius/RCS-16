@@ -5,9 +5,10 @@ body {
   user-select: none;
   color: var(--text-color);
   background-color: var(--back-color);
-  margin: 0;
-}
-
-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   cursor: none !important;
 }

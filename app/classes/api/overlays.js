@@ -341,8 +341,8 @@ class TextCursorOverlay extends Overlay {
   }
 
   update () {
-    this._sprite.x = (this._x - 1) * this._sprite.width + RCS.text.offsetX + this._offsetX
-    this._sprite.y = (this._y - 1) * this._sprite.height + RCS.text.offsetY + this._offsetY
+    this._sprite.x = (this._x - 1) * this._sprite.width + this._offsetX
+    this._sprite.y = (this._y - 1) * this._sprite.height + this._offsetY
     super.update()
   }
 
@@ -361,34 +361,9 @@ class MouseCursorOverlay extends Overlay {
     this.create()
   }
 
-  reset () {
-    super.reset()
-
-    let buf = RCS.strings_to_buffer([
-      'X',
-      'XX',
-      'X@X',
-      'X@@X',
-      'X@@@X',
-      'X@@@@X',
-      'X@@@@@X',
-      'X@@XXXX',
-      'X@X',
-      'XX',
-    ], { X: 1, '@': 2 }, this._width, this._height)
-
-    let data = this._context.getImageData(0, 0, this._width, this._height)
-    let pixels = new Uint32Array(data.data.buffer)
-    for (let i = 0; i < this._width * this._height; i++) {
-      pixels[i] = RCS.palette.get(buf[i])
-    }
-    this._context.putImageData(data, 0, 0)
-  }
-
   tick (t) {
     if (t - this._last >= this._refresh) {
       this._last = t
-
       this.update()
     }
   }
@@ -409,9 +384,22 @@ class MouseCursorOverlay extends Overlay {
     }
   }
 
+  updateBuffer (buf, width = this._width, height = this._height) {
+    let data = this._context.getImageData(0, 0, this._width, this._height)
+    let pixels = new Uint32Array(data.data.buffer)
+    for (let y = 0; y < this._height; y++) {
+      let s = y * width
+      let t = y * this._width
+      for (let x = 0; x < this._width; x++) {
+        pixels[t++] = RCS.palette.get(y < height && x < width ? buf[s++] : 0)
+      }
+    }
+    this._context.putImageData(data, 0, 0)
+  }
+
   update () {
-    this._sprite.x = this._x * this._sprite.scale.x + this._offsetX
-    this._sprite.y = this._y * this._sprite.scale.y + this._offsetY
+    this._sprite.x = (this._x + this._offsetX - RCS.mouse.originX) * this._sprite.scale.x
+    this._sprite.y = (this._y + this._offsetY - RCS.mouse.originY) * this._sprite.scale.y
     super.update()
   }
 
@@ -426,8 +414,6 @@ class Overlays extends Emitter {
     let width = RCS.renderer.width
     let height = RCS.renderer.height
     let scale = RCS.video.scale
-    let marginX = RCS.video.marginX
-    let marginY = RCS.video.marginY
 
     this._overlays = ['screen', 'sprite', 'textCursor', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
 
@@ -465,6 +451,7 @@ class Overlays extends Emitter {
     this.monitor = new PIXI.Sprite(tex)
     this.monitor.width = width
     this.monitor.height = height
+    this.monitor.alpha = 0.4
     RCS.stage.addChild(this.monitor)
   }
 

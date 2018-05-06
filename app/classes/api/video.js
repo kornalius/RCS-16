@@ -8,15 +8,15 @@ PIXI.Point.prototype.distance = target => {
   Math.sqrt((this.x - target.x) * (this.x - target.x) + (this.y - target.y) * (this.y - target.y))
 }
 
-const VIDEO_WIDTH = 378
-const VIDEO_HEIGHT = 264
+const VIDEO_WIDTH = 480
+const VIDEO_HEIGHT = 400
 
 RCS.stage = new PIXI.Container()
 RCS.renderer = new PIXI.autoDetectRenderer(100, 100, null, { roundPixels: true, autoResize: true })
 
 class Video extends Emitter {
 
-  constructor (scale = 3, offsetX = 0, offsetY = 0, marginX = 32, marginY = 32) {
+  constructor (scale = 3, offsetX = 0, offsetY = 0, marginX = 4, marginY = 4) {
     super()
 
     this.force_update = false
@@ -37,22 +37,16 @@ class Video extends Emitter {
     RCS.renderer.view.style.left = Math.trunc(this._marginY / 2) + 'px'
 
     window.addEventListener('resize', () => {
-      // let ratio = Math.min(window.innerWidth / this.width, window.innerHeight / this.height)
-      // this.RCS.stage.scale.x = this.RCS.stage.scale.y = ratio
-      // RCS.renderer.resize(Math.ceil(this.width * ratio), Math.ceil(this.height * ratio))
-      RCS.renderer.view.style.left = window.innerWidth * 0.5 - RCS.renderer.width * 0.5 + 'px'
-      RCS.renderer.view.style.top = window.innerHeight * 0.5 - RCS.renderer.height * 0.5 + 'px'
-
-      if (this.refresh) {
-        this.refresh()
-      }
+      this.resize()
     })
 
     document.body.appendChild(RCS.renderer.view)
 
     this.reset()
 
-    this.emit('resize')
+    setTimeout(() => {
+      this.resize()
+    }, 500)
 
     this.clear()
   }
@@ -108,6 +102,18 @@ class Video extends Emitter {
   shut () {
     this._buffer.free()
     this._buffer = undefined
+  }
+
+  resize () {
+    // let ratio = Math.min(window.innerWidth / this.width, window.innerHeight / this.height)
+    // this.RCS.stage.scale.x = this.RCS.stage.scale.y = ratio
+    // RCS.renderer.resize(Math.ceil(this.width * ratio), Math.ceil(this.height * ratio))
+    RCS.renderer.view.style.left = window.innerWidth * 0.5 - RCS.renderer.width * 0.5 + 'px'
+    RCS.renderer.view.style.top = window.innerHeight * 0.5 - RCS.renderer.height * 0.5 + 'px'
+
+    if (this.refresh) {
+      this.refresh()
+    }
   }
 
   flip () {
