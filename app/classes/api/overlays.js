@@ -17,6 +17,11 @@ class Overlay extends Emitter {
   }
 
   create () {
+    if (this._canvas) {
+      this._canvas.destroy()
+      this._canvas = null
+    }
+
     this._canvas = new PIXI.CanvasRenderTarget(this._width, this._height)
 
     this._tex = PIXI.Texture.fromCanvas(this._canvas.canvas, PIXI.SCALE_MODES.NEAREST)
@@ -28,7 +33,23 @@ class Overlay extends Emitter {
   }
 
   get width () { return this._width }
+  set width (value) {
+    if (value !== this._width) {
+      this._width = value
+      this.create()
+      this.reset()
+    }
+  }
+
   get height () { return this._height }
+  set height (value) {
+    if (value !== this._height) {
+      this._height = value
+      this.create()
+      this.reset()
+    }
+  }
+
   get last () { return this._last }
 
   get canvas () { return this._canvas }
@@ -223,13 +244,13 @@ class NoisesOverlay extends Overlay {
 
   tick (t) {
     if (t - this._last >= this._refresh) {
-      const keys = this._noiseKeys
-      const noises = this._noises
+      let keys = this._noiseKeys
+      let noises = this._noises
       for (let k of keys) {
         noises[k].sprite.visible = false
       }
       let noise = keys[Math.trunc(Math.random() * keys.length)]
-      _.set(noises, [noise, 'sprite.visible'], true)
+      _.set(noises, [noise, 'sprite', 'visible'], true)
       this._last = t
 
       this.update()
@@ -315,13 +336,15 @@ class TextCursorOverlay extends Overlay {
   reset () {
     super.reset()
 
-    let data = this._context.getImageData(0, 0, this._width, this._height)
-    let pixels = new Uint32Array(data.data.buffer)
-    let c = RCS.palette.get(9)
-    for (let i = 0; i < this._width * this._height; i++) {
-      pixels[i] = c
+    if (this._width && this._height && RCS.palette.buffer) {
+      let data = this._context.getImageData(0, 0, this._width, this._height)
+      let pixels = new Uint32Array(data.data.buffer)
+      let c = RCS.palette.get(9)
+      for (let i = 0; i < this._width * this._height; i++) {
+        pixels[i] = c
+      }
+      this._context.putImageData(data, 0, 0)
     }
-    this._context.putImageData(data, 0, 0)
   }
 
   get x () { return this._x }
@@ -385,16 +408,18 @@ class MouseCursorOverlay extends Overlay {
   }
 
   updateBuffer (buf, width = this._width, height = this._height) {
-    let data = this._context.getImageData(0, 0, this._width, this._height)
-    let pixels = new Uint32Array(data.data.buffer)
-    for (let y = 0; y < this._height; y++) {
-      let s = y * width
-      let t = y * this._width
-      for (let x = 0; x < this._width; x++) {
-        pixels[t++] = RCS.palette.get(y < height && x < width ? buf[s++] : 0)
+    if (this._width && this._height && RCS.palette.buffer) {
+      let data = this._context.getImageData(0, 0, this._width, this._height)
+      let pixels = new Uint32Array(data.data.buffer)
+      for (let y = 0; y < this._height; y++) {
+        let s = y * width
+        let t = y * this._width
+        for (let x = 0; x < this._width; x++) {
+          pixels[t++] = RCS.palette.get(y < height && x < width ? buf[s++] : 0)
+        }
       }
+      this._context.putImageData(data, 0, 0)
     }
-    this._context.putImageData(data, 0, 0)
   }
 
   update () {
@@ -417,7 +442,7 @@ class Overlays extends Emitter {
 
     this._overlays = ['screen', 'sprite', 'textCursor', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
 
-    this.textCursor = new TextCursorOverlay(RCS.text.chr_width, RCS.text.chr_height)
+    this.textCursor = new TextCursorOverlay(0, 0)
     this.textCursor.sprite.scale = new PIXI.Point(scale, scale)
     RCS.stage.addChild(this.textCursor.sprite)
 

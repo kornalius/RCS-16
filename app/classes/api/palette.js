@@ -4,7 +4,7 @@
 
 const { Emitter } = require('../../mixins/common/events')
 
-const PALETTE_MAX = 32
+const PALETTE_MAX = 64
 
 class Palette extends Emitter {
 

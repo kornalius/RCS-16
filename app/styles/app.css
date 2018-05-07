@@ -1,8 +1,6 @@
 @import url(./colors.css);
 
 body {
-  -webkit-user-select: none;
-  user-select: none;
   color: var(--text-color);
   background-color: var(--back-color);
   position: absolute;
@@ -10,5 +8,10 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+}
+
+* {
   cursor: none !important;
+  -webkit-user-select: none;
+  user-select: none;
 }

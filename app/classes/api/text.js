@@ -3,7 +3,46 @@
  */
 
 const { Emitter } = require('../../mixins/common/events')
-const { fs, path } = require('../../utils')
+const { fs } = require('../../utils')
+
+const TEXT_WIDTH = 120
+const TEXT_HEIGHT = 80
+
+const FONTS = {
+  tiny: {
+    path: '4x6',
+  },
+  normal: {
+    path: '6x10',
+  },
+  normal_bold: {
+    path: '6x10b',
+  },
+  normal_italic: {
+    path: '6x10O',
+  },
+  normal_bold_italic: {
+    path: '6x10BO',
+  },
+  large: {
+    path: '8x13',
+  },
+  large_bold: {
+    path: '8x13b',
+  },
+  extra_large: {
+    path: '14x14',
+  },
+  extra_large_bold: {
+    path: '14x14b',
+  },
+  extra_large_italic: {
+    path: '14x14O',
+  },
+  extra_large_bold_italic: {
+    path: '14x14BO',
+  },
+}
 
 class BDF {
 
@@ -28,10 +67,10 @@ class BDF {
       switch (declaration) {
         case 'STARTFONT':
           declarationStack.push(declaration)
-          this.meta.version = Math.abs(line_data[1])
+          this.meta.version = line_data[1]
           break
         case 'FONT':
-          this.meta.name = Math.abs(line_data[1])
+          this.meta.name = line_data[1]
           break
         case 'SIZE':
           this.meta.size = {
@@ -89,10 +128,10 @@ class BDF {
           break
         case 'BBX':
           currentChar.boundingBox = {
-            x: Math.abs(line_data[3]),
-            y: Math.abs(line_data[4]),
             width: Math.abs(line_data[1]),
             height: Math.abs(line_data[2]),
+            x: Math.abs(line_data[3]),
+            y: Math.abs(line_data[4]),
           }
           break
         case 'BITMAP':
@@ -124,40 +163,56 @@ class BDF {
 
 class Text extends Emitter {
 
-  constructor (char_count = 256, char_width = 6, char_height = 10, char_offsetX = 0, char_offsetY = 4) {
+  constructor (font_path, font_width = 0, font_height = 0, font_offsetx = 0, font_offsety = 0, font_count = 256) {
     super()
 
-    this._chr_count = char_count
-    this._chr_width = char_width
-    this._chr_height = char_height
-    this._chr_offset_x = char_offsetX
-    this._chr_offset_y = char_offsetY
-    this._chr_size = this._chr_width * this._chr_height
-
-    this._width = Math.round(RCS.video.width / this._chr_width)
-    this._height = Math.round(RCS.video.height / this._chr_height)
+    this._width = TEXT_WIDTH
+    this._height = TEXT_HEIGHT
     this._size = this._width * this._height * 3
 
-    this._fnt_size = this._chr_count * this._chr_size
+    let f = FONTS[font_path]
+    if (f) {
+      font_path = f.path
+      font_width = f.width || font_width
+      font_height = f.height || font_height
+      font_offsetx = f.offsetx || font_offsetx
+      font_offsety = f.offsety || font_offsety
+      font_count = f.count || font_count
+    }
+
+    this._font_path = font_path
+    this._font_width = font_width
+    this._font_height = font_height
+    this._font_offsetX = font_offsetx
+    this._font_offsetY = font_offsety
+    this._font_count = font_count
   }
 
   get buffer () { return this._buffer }
   get array () { return this._buffer.array }
 
+  get width () { return this._width }
+  get height () { return this._height }
+  get size () { return this._size }
+
   get fnt_buffer () { return this._fnt_buffer }
   get fnt_array () { return this._fnt_buffer.array }
   get fnt_size () { return this._fnt_size }
 
-  get chr_count () { return this._chr_count }
-  get chr_width () { return this._chr_width }
-  get chr_height () { return this._chr_height }
-  get chr_offset_x () { return this._chr_offset_x }
-  get chr_offset_y () { return this._chr_offset_y }
-  get chr_size () { return this._chr_size }
+  get bdf () { return this._bdf }
+  get font_path () { return this._font_path }
+  get font_count () { return this._font_count || this._bdf.meta.totalChars }
+  get font_width () { return this._font_width || this._bdf.meta.boundingBox.width }
+  get font_height () { return this._font_height || this._bdf.meta.boundingBox.height }
+  get font_offsetx () { return this._font_offsetX || this._bdf.meta.boundingBox.x }
+  get font_offsety () { return this._font_offsetY || this._bdf.meta.boundingBox.y }
 
-  get width () { return this._width }
-  get height () { return this._height }
-  get size () { return this._size }
+  get font_name () { return this._bdf.meta.name }
+  get font_boundingbox () { return this._bdf.meta.boundingBox }
+  get font_descent () { return this._bdf.meta.properties.fontDescent }
+  get font_ascent () { return this._bdf.meta.properties.fontAscent }
+
+  get char_size () { return this._char_size }
 
   tick (t) {
     if (RCS.video.force_update) {
@@ -169,16 +224,15 @@ class Text extends Emitter {
   async boot (cold = true) {
     this.clear()
     if (cold) {
-      this._fnt_buffer = RCS.memoryManager.alloc(RCS.i8, this._fnt_size)
-      this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
       await this.reset()
     }
   }
 
   async reset () {
     RCS.video.force_update = false
+    this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
     this.clear()
-    return this.load_fnt()
+    return this.load_fnt(this._font_path, this._font_width, this._font_height, this._font_offsetx, this._font_offsety, this._font_count)
   }
 
   clear () {
@@ -196,21 +250,45 @@ class Text extends Emitter {
     this._buffer = undefined
   }
 
-  async load_fnt () {
+  async load_fnt (font_path, font_width = 0, font_height = 0, font_offsetx = 0, font_offsety = 0, font_count = 256) {
+    let f = FONTS[font_path]
+    if (f) {
+      font_path = f.path
+      font_width = f.width || font_width
+      font_height = f.height || font_height
+      font_offsetx = f.offsetx || font_offsetx
+      font_offsety = f.offsety || font_offsety
+      font_count = f.count || font_count
+    }
+
+    this._font_path = RCS.DIRS.cwd + '/fonts/' + font_path + '.bdf'
+    this._font_width = font_width
+    this._font_height = font_height
+    this._font_offsetX = font_offsetx
+    this._font_offsetY = font_offsety
+    this._font_count = font_count
+
     let b = new BDF()
-    let ff = await fs.readFile(RCS.DIRS.cwd + '/fonts/6x10.bdf', 'utf-8')
+    let ff = await fs.readFile(this._font_path, 'utf-8')
     b.load(ff)
+    this._bdf = b
 
-    // let points = b.meta.size.points
-    let fontAscent = b.meta.properties.fontAscent
-    // let fontDescent = b.meta.properties.fontDescent
-    let baseline = fontAscent + this._chr_offset_y
+    this._char_size = this.font_width * this.font_height
+    this._fnt_size = this.font_count * this._char_size
 
-    let cw = this._chr_width
-    let fnt_sz = this._chr_size
-    let osx = this._chr_offset_x
+    if (this._fnt_buffer) {
+      this._fnt_buffer.free()
+    }
+    this._fnt_buffer = RCS.memoryManager.alloc(RCS.i8, this._fnt_size)
 
-    var mem = this.fnt_array
+    RCS.overlays.textCursor.width = this.font_width
+    RCS.overlays.textCursor.height = this.font_height
+
+    let baseline = this.font_ascent + this.font_descent + this.font_offsety
+    let cw = this.font_width
+    let fnt_sz = this._char_size
+    let osx = this.font_offsetx
+    let mem = this.fnt_array
 
     for (let k in b.glyphs) {
       let g = b.glyphs[k]
@@ -225,41 +303,41 @@ class Text extends Emitter {
         }
       }
     }
-
-    return b
   }
 
   draw () {
-    let cw = this._chr_width
-    let ch = this._chr_height
-    let tw = this._width
-    let th = this._height
-    let w = RCS.video.width
-    let fnt_sz = this._chr_size
+    if (this._bdf) {
+      let cw = this.font_width
+      let ch = this.font_height
+      let tw = this._width
+      let th = this._height
+      let w = RCS.video.width
+      let fnt_sz = this._char_size
 
-    var fnt_mem = this.fnt_array
-    var mem = this.array
+      var fnt_mem = this.fnt_array
+      var mem = this.array
 
-    let idx = 0
-    for (let y = 0; y < th; y++) {
-      for (let x = 0; x < tw; x++) {
-        let c = mem[idx]
-        if (c) {
-          let fg = mem[idx + 1] ? 2 : 0
-          let bg = mem[idx + 2] ? 2 : 0
+      let idx = 0
+      for (let y = 0; y < th; y++) {
+        for (let x = 0; x < tw; x++) {
+          let c = mem[idx]
+          if (c) {
+            let fg = mem[idx + 1]
+            let bg = mem[idx + 2]
 
-          let px = x * cw
-          let py = y * ch
+            let px = x * cw
+            let py = y * ch
 
-          let ptr = c * fnt_sz
-          for (let by = 0; by < ch; by++) {
-            let pi = (py + by) * w + px
-            for (let bx = 0; bx < cw; bx++) {
-              RCS.video.pixel(pi++, fnt_mem[ptr++] ? fg : bg)
+            let ptr = c * fnt_sz
+            for (let by = 0; by < ch; by++) {
+              let pi = (py + by) * w + px
+              for (let bx = 0; bx < cw; bx++) {
+                RCS.video.pixel(pi++, fnt_mem[ptr++] ? fg : bg)
+              }
             }
           }
+          idx += 3
         }
-        idx += 3
       }
     }
   }
@@ -284,7 +362,7 @@ class Text extends Emitter {
     return { ch: mem[tidx], fg: mem[tidx + 1], bg: mem[tidx + 2] }
   }
 
-  put_char (ch, fg = 1, bg = 0) {
+  put_char (ch, fg = 2, bg = 0) {
     switch (ch.charCodeAt(0)) {
       case 13:
       case 10:
@@ -311,6 +389,10 @@ class Text extends Emitter {
       this.put_char(c, fg, bg)
     }
     return this
+  }
+
+  println (text, fg, bg) {
+    return this.print(text + '\n', fg, bg)
   }
 
   pos () { return { x: RCS.overlays.textCursor.x, y: RCS.overlays.textCursor.y } }
@@ -442,5 +524,8 @@ class Text extends Emitter {
 
 module.exports = {
   BDF,
+  TEXT_WIDTH,
+  TEXT_HEIGHT,
+  FONTS,
   Text,
 }
