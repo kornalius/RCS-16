@@ -312,66 +312,6 @@ class CrtOverlay extends Overlay {
 }
 
 
-class TextCursorOverlay extends Overlay {
-
-  constructor (width, height, offsetX, offsetY, refresh = 500) {
-    super(width, height, offsetX, offsetY)
-
-    this._refresh = refresh
-    this._x = 1
-    this._y = 1
-
-    this.create()
-  }
-
-  tick (t) {
-    if (t - this._last >= this._refresh) {
-      this._sprite.visible = !this._sprite.visible
-      this._last = t
-
-      this.update()
-    }
-  }
-
-  reset () {
-    super.reset()
-
-    if (this._width && this._height && RCS.palette.buffer) {
-      let data = this._context.getImageData(0, 0, this._width, this._height)
-      let pixels = new Uint32Array(data.data.buffer)
-      let c = RCS.palette.get(9)
-      for (let i = 0; i < this._width * this._height; i++) {
-        pixels[i] = c
-      }
-      this._context.putImageData(data, 0, 0)
-    }
-  }
-
-  get x () { return this._x }
-  set x (value) {
-    if (value !== this._x) {
-      this._x = value
-      this.update()
-    }
-  }
-
-  get y () { return this._y }
-  set y (value) {
-    if (value !== this._y) {
-      this._y = value
-      this.update()
-    }
-  }
-
-  update () {
-    this._sprite.x = (this._x - 1) * this._sprite.width + this._offsetX
-    this._sprite.y = (this._y - 1) * this._sprite.height + this._offsetY
-    super.update()
-  }
-
-}
-
-
 class MouseCursorOverlay extends Overlay {
 
   constructor (width, height, offsetX, offsetY, refresh = 5) {
@@ -440,11 +380,7 @@ class Overlays extends Emitter {
     let height = RCS.renderer.height
     let scale = RCS.video.scale
 
-    this._overlays = ['screen', 'sprite', 'textCursor', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
-
-    this.textCursor = new TextCursorOverlay(0, 0)
-    this.textCursor.sprite.scale = new PIXI.Point(scale, scale)
-    RCS.stage.addChild(this.textCursor.sprite)
+    this._overlays = ['screen', 'sprite', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
 
     this.sprite = new SpriteOverlay(RCS.video.width, RCS.video.height)
     this.sprite.sprite.scale = new PIXI.Point(scale, scale)
@@ -488,7 +424,6 @@ class Overlays extends Emitter {
     this.rgb.tick(t)
     this.noises.tick(t)
     this.crt.tick(t)
-    this.textCursor.tick(t)
     this.mouseCursor.tick(t)
   }
 
@@ -506,7 +441,6 @@ class Overlays extends Emitter {
     this.rgb.reset()
     this.noises.reset()
     this.crt.reset()
-    this.textCursor.reset()
     this.mouseCursor.reset()
   }
 
@@ -529,7 +463,6 @@ module.exports = {
   NoisesOverlay,
   RgbOverlay,
   CrtOverlay,
-  TextCursorOverlay,
   MouseCursorOverlay,
   Overlays,
 }

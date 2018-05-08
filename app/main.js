@@ -36,10 +36,10 @@ class Main extends Emitter {
 
     RCS.overlays.shut()
     RCS.palette.shut()
-    RCS.text.shut()
     RCS.sprite.shut()
     RCS.video.shut()
     RCS.mouse.shut()
+    RCS.keyboard.shut()
 
     RCS.memoryManager.shut()
   }
@@ -111,8 +111,8 @@ class Main extends Emitter {
       let t = performance.now()
 
       RCS.mouse.tick(t, delta)
+      RCS.keyboard.tick(t, delta)
       RCS.palette.tick(t, delta)
-      RCS.text.tick(t, delta)
       RCS.sprite.tick(t, delta)
       RCS.overlays.tick(t, delta)
       RCS.video.tick(t, delta)
@@ -126,10 +126,10 @@ class Main extends Emitter {
 
     await RCS.memoryManager.boot()
     await RCS.video.boot()
-    await RCS.text.boot()
     await RCS.sprite.boot()
     await RCS.palette.boot()
     await RCS.mouse.boot()
+    await RCS.keyboard.boot()
     await RCS.overlays.boot()
   }
 

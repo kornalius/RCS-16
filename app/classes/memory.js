@@ -1,8 +1,16 @@
+/**
+ * @module classes
+ */
+
+const { Emitter } = require('../mixins/common/events')
+
 const hexy = require('hexy')
 const { hex, littleEndian } = require('../utils.js')
 
 const RAM_SIZE = 4 * 1024 * 1024
 const RAM = new ArrayBuffer(RAM_SIZE)
+
+const DEFAULT_TYPE = 'i8'
 
 const sizes = {
   i8: 1,
@@ -32,17 +40,23 @@ const sizeOf = function (type, value) {
   return _.isNumber(type) ? type : sizes[type]
 }
 
-class MemBlock {
+class MemBlock extends Emitter {
 
-  constructor (type, offset, size) {
+  constructor (type = DEFAULT_TYPE, offset = 0, count = 1) {
+    super()
+
+    let size = sizeOf(type) * count
+
     offset = Math.ceil(offset / 4) * 4
     size = Math.ceil(size / 4) * 4
 
-    this._size = size || 1
-    this._top = offset || 0
+    this._type = type
+    this._offset = offset
+    this._count = count
+    this._size = size
     this._active = true
 
-    this._array = new window[sizeNames[type] + 'Array'](RAM, this._top, this._size)
+    this._array = new window[sizeNames[type] + 'Array'](RAM, this._offset, this._count)
     this._view = new DataView(this._array.buffer)
   }
 
@@ -50,35 +64,22 @@ class MemBlock {
     this._active = false
   }
 
-  get top () { return this._top }
-  set top (value) {
-    if (value !== this._top) {
-      this._top = value
-    }
-  }
-
-  get bottom () { return this._top + this._size - 1 }
+  get active () { return this._active }
+  get type () { return this._type }
+  get offset () { return this._offset }
+  get count () { return this._count }
+  get top () { return this._offset }
+  get bottom () { return this._offset + this._size - 1 }
 
   get size () { return this._size }
-  set size (value) {
-    if (value !== this._size) {
-      this._size = value
-    }
-  }
-
   get array () { return this._array }
   get view () { return this._view }
 
-  get active () { return this._active }
-  set active (value) {
-    if (value !== this._active) {
-      this._active = value
-    }
+  clear () {
+    this.fill()
   }
 
-  clear () { this.fill(0, this.top, this.size) }
-
-  db (type, offset, ...args) {
+  db (type = DEFAULT_TYPE, offset = this._offset, ...args) {
     let sz = sizes[type]
     let fn = this._view['set' + sizeNames[type]]
     for (let a of args) {
@@ -87,47 +88,58 @@ class MemBlock {
     }
   }
 
-  ld (type, offset) {
+  ld (type = DEFAULT_TYPE, offset = this._offset) {
     return this._view['get' + sizeNames[type]](offset, littleEndian)
   }
 
-  ldb (offset) { return this.ld('i8', offset) }
+  ldb (offset) {
+    return this.ld('i8', offset)
+  }
 
-  ldw (offset) { return this.ld('i16', offset) }
+  ldw (offset) {
+    return this.ld('i16', offset)
+  }
 
-  ldd (offset) { return this.ld('i32', offset) }
+  ldd (offset) {
+    return this.ld('i32', offset)
+  }
 
-  ldf (offset) { return this.ld('f32', offset) }
+  ldf (offset) {
+    return this.ld('f32', offset)
+  }
 
-  st (type, offset, value) {
+  st (type = DEFAULT_TYPE, offset = this._offset, value = 0) {
     let size = sizeOf(type, value)
     this._view['set' + sizeNames[type]](offset, value, littleEndian)
     return offset + size
   }
 
-  stb (offset, value) { return this.st('i8', offset, value) }
-
-  stw (offset, value) { return this.st('i16', offset, value) }
-
-  std (offset, value) { return this.st('i32', offset, value) }
-
-  stf (offset, value) { return this.st('f32', offset, value) }
-
-  ldl (offset, size) {
-    return this._array.slice(offset, offset + size - 1)
+  stb (offset, value = 0) {
+    return this.st('i8', offset, value)
   }
 
-  lds (offset, size) {
-    if (_.isString(offset)) {
-      return offset
-    }
+  stw (offset, value = 0) {
+    return this.st('i16', offset, value)
+  }
 
+  std (offset, value = 0) {
+    return this.st('i32', offset, value)
+  }
+
+  stf (offset, value = 0) {
+    return this.st('f32', offset, value)
+  }
+
+  ldl (offset = 0, count = 1) {
+    return this._array.slice(offset, offset + count - 1)
+  }
+
+  lds (offset = this._offset, count = sizes.str) {
     let s = ''
-    size = size || sizes.str
-    const bottom = Math.min(offset + size - 1, this.bottom)
+    const c = Math.min(this._count, offset + count - 1)
     const mem = this._array
-    while (offset <= bottom) {
-      const c = mem[offset++]
+    while (offset <= c) {
+      let c = mem[offset++]
       if (c === 0) {
         break
       }
@@ -136,38 +148,33 @@ class MemBlock {
     return s
   }
 
-  stl (offset, value, size) {
-    this._array.set(value.subarray(0, size || value.byteLength), offset)
-    return offset + size
+  stl (offset = this._offset, value) {
+    this._array.set(Array.from(value.entries()), offset)
+    return offset + value.length
   }
 
-  sts (offset, str, size) {
-    size = size || sizes.str - 1
-    let a = _.map(str.split(''), i => i.charCodeAt(0))
-    a.length = Math.min(size, a.length)
-    this.fill(0, offset, size)
-    this._array.set(a, offset)
-    return offset + size
-  }
-
-  fill (value, top, size) {
-    if (_.isUndefined(top)) {
-      top = this._top
+  sts (offset = this._offset, str = '', len = str.length) {
+    for (let c of str) {
+      this._array[offset++] = c
+      len--
+      if (len < 0) {
+        break
+      }
     }
-    if (_.isUndefined(size)) {
-      size = this._size
-    }
-    this._array.fill(value || 0, top, top + size)
+    return offset
   }
 
-  copy (src, tgt, size) {
-    this._array.copyWithin(tgt, src, src + size - 1)
+  fill (value = 0, offset = this._offset, count = this._count) {
+    this._array.fill(value, offset, offset + count - 1)
   }
 
-  read (offset, type = 'i8') {
-    let size = sizeOf(type)
+  copy (src, tgt, count = 1) {
+    this._array.copyWithin(tgt, src, src + count - 1)
+  }
+
+  read (offset, type = DEFAULT_TYPE) {
     if (_.isNumber(type)) {
-      return this._array.slice(offset, offset + size - 1)
+      return this.ldl(offset, offset + sizeOf(type) - 1)
     }
     else if (type === 'str') {
       return this.lds(offset)
@@ -177,9 +184,9 @@ class MemBlock {
     }
   }
 
-  write (value, offset, type = 'i8') {
-    let size = sizeOf(type, value)
+  write (value, offset = this._offset, type = DEFAULT_TYPE) {
     if (_.isNumber(type)) {
+      let size = sizeOf(type, value)
       this._array.set(value.subarray(0, type - 1), offset)
       return offset + size
     }
@@ -200,6 +207,7 @@ class MemBlock {
 
 module.exports = {
   MemBlock,
+  DEFAULT_TYPE,
   RAM_SIZE,
   RAM,
   sizes,

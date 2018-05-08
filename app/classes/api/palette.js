@@ -21,7 +21,7 @@ class Palette extends Emitter {
   async boot (cold = true) {
     this.clear()
     if (cold) {
-      this._buffer = RCS.memoryManager.alloc(RCS.i32, PALETTE_MAX)
+      this._buffer = RCS.memoryManager.alloc(RCS.i32, this.size)
       this.reset()
     }
   }
@@ -106,8 +106,10 @@ class Palette extends Emitter {
   }
 
   shut () {
-    this._buffer.free()
-    this._buffer = undefined
+    if (this._buffer) {
+      this._buffer.free()
+      this._buffer = undefined
+    }
   }
 
   get (c) {
@@ -116,6 +118,11 @@ class Palette extends Emitter {
 
   set (c, r, g, b, a) {
     this.array[c] = this.rgba_to_num(r, g, b, a)
+  }
+
+  refresh (flip = true) {
+    RCS.video.refresh(flip)
+    RCS.video.force_update = true
   }
 
   red (rgba) { return this.split_rgba(rgba).r }
@@ -167,7 +174,7 @@ class Palette extends Emitter {
   rgba_to_palette (r, g, b, a) {
     let mem = this.array
     let color = this.rgba_to_num(r, g, b, a)
-    for (let c = 0; c < this.pal_count; c++) {
+    for (let c = 0; c < this.size; c++) {
       if (mem[c] === color) {
         return c
       }

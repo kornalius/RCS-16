@@ -1,13 +1,21 @@
+/**
+ * @module classes
+ */
+
+const { Emitter } = require('../mixins/common/events')
+
 const hexy = require('hexy')
 const prettyBytes = require('pretty-bytes')
-const { MemBlock, sizeOf, RAM_SIZE, RAM } = require('./memory.js')
+const { MemBlock, sizeOf, DEFAULT_TYPE, RAM_SIZE, RAM } = require('./memory.js')
 const { hex } = require('../utils.js')
 
 const collect_delay = 32 * 1024
 
-class MemoryManager {
+class MemoryManager extends Emitter {
 
   constructor () {
+    super()
+
     this._blocks = []
     this._last = 0
   }
@@ -57,8 +65,7 @@ class MemoryManager {
 
   get free_mem () { return this.avail_mem - this.used_mem }
 
-  alloc (type, count, ...value) {
-    count = count || 1
+  alloc (type = DEFAULT_TYPE, count = 1, ...value) {
     let size = sizeOf(type) * count
     let n = 0
 
@@ -69,7 +76,7 @@ class MemoryManager {
 
       if (!b.active && b.size >= size) {
         if (b.size === size) {
-          b.active = true
+          b._active = true
           return b.top
         }
 
@@ -77,11 +84,10 @@ class MemoryManager {
         b.bottom = b.top + size - 1
         b.size = size
         b.count = count
-        b.active = true
+        b._active = true
 
         let block = new MemBlock(type, b.bottom + 1, ob - (b.bottom + 1))
         this._blocks.push(block)
-
         return block
       }
     }
@@ -93,7 +99,7 @@ class MemoryManager {
     let addr = n
 
     let block = new MemBlock(type, addr, count)
-    block.active = true
+    block._active = true
     this._blocks.push(block)
 
     block.fill(0, addr, size)
@@ -113,7 +119,7 @@ class MemoryManager {
   free (addr) {
     let b = this.block(addr)
     if (b) {
-      b.active = false
+      b._active = false
     }
   }
 

@@ -46,7 +46,7 @@ class Video extends Emitter {
 
     setTimeout(() => {
       this.resize()
-    }, 500)
+    }, 100)
 
     this.clear()
   }
@@ -100,8 +100,10 @@ class Video extends Emitter {
   }
 
   shut () {
-    this._buffer.free()
-    this._buffer = undefined
+    if (this._buffer) {
+      this._buffer.free()
+      this._buffer = undefined
+    }
   }
 
   resize () {

@@ -40,10 +40,6 @@ class Sprite extends Emitter {
   get size () { return this._size }
 
   tick (t) {
-    if (RCS.video.force_update) {
-      this.draw()
-      RCS.video.force_update = false
-    }
   }
 
   get (idx) {
@@ -108,8 +104,15 @@ class Sprite extends Emitter {
   }
 
   shut () {
-    this._buffer.free()
-    this._buffer = undefined
+    if (this._buffer) {
+      this._buffer.free()
+      this._buffer = undefined
+    }
+  }
+
+  refresh (flip = true) {
+    RCS.video.refresh(flip)
+    RCS.video.force_update = true
   }
 
   find (name) {

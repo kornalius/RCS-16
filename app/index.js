@@ -18,6 +18,8 @@ const { FS } = require('./classes/db/fs')
 const { sizes } = require('./classes/memory')
 const { MemoryManager } = require('./classes/memorymanager')
 
+const { Stack } = require('./classes/stack')
+
 const { Test } = require('./test')
 
 // Check for littleEndian
@@ -110,6 +112,8 @@ class RCSClass {
   get Doc () { return Doc }
   get Table () { return Table }
   get FS () { return FS }
+
+  get Stack () { return Stack }
 
   get main () {
     if (!_main) {

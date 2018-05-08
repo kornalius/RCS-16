@@ -4,9 +4,13 @@
 
 const { Emitter } = require('../../mixins/common/events')
 
+const _MOUSEMOVE = 0
+const _MOUSEDOWN = 1
+const _MOUSEUP = 2
+
 class Mouse extends Emitter {
 
-  constructor (spriteIndex = -1, originX = 0, originY = 0, spriteWidth = RCS.sprite.width, spriteHeight = RCS.sprite.height) {
+  constructor (spriteIndex = -1, originX = 0, originY = 0, spriteWidth = RCS.sprite.width, spriteHeight = RCS.sprite.height, count = 255) {
     super()
 
     this._x = 0
@@ -18,6 +22,7 @@ class Mouse extends Emitter {
     this._spriteWidth = spriteWidth
     this._spriteHeight = spriteHeight
     this.spriteIndex = spriteIndex
+    this._count = count
 
     let stage = RCS.stage
     if (stage) {
@@ -38,6 +43,8 @@ class Mouse extends Emitter {
 
   get buffer () { return this._buffer }
   get array () { return this._buffer.array }
+  get stack () { return this._stack }
+  get count () { return this._count }
 
   get x () { return this._x }
   get y () { return this._y }
@@ -116,7 +123,8 @@ class Mouse extends Emitter {
     this.clear()
     if (cold) {
       this.reset()
-      this._buffer = RCS.memoryManager.alloc(RCS.i32, 3)
+      this._buffer = RCS.memoryManager.alloc(RCS.i32, 4 * this._count)
+      this._stack = new RCS.Stack(this._buffer, true)
     }
   }
 
@@ -133,14 +141,18 @@ class Mouse extends Emitter {
     this._btns = 0
 
     if (this._buffer) {
-      this.array.fill(0)
-      RCS.video.refresh()
+      this._stack.reset()
     }
   }
 
   shut () {
-    this._buffer.free()
-    this._buffer = undefined
+    if (this._buffer) {
+      this._stack.free()
+      this._stack = undefined
+
+      this._buffer.free()
+      this._buffer = undefined
+    }
   }
 
   onMouseDown (e) {
@@ -157,6 +169,8 @@ class Mouse extends Emitter {
         this._btns |= 0x04
         break
     }
+
+    this._push(e)
   }
 
   onMouseUp (e) {
@@ -173,6 +187,8 @@ class Mouse extends Emitter {
         this._btns &= ~0x04
         break
     }
+
+    this._push(e)
   }
 
   onMouseMove (e) {
@@ -188,14 +204,43 @@ class Mouse extends Emitter {
       cursor.x = x
       cursor.y = y
 
-      this._updateBuffer()
+      this._push(e)
 
       RCS.video.refresh(false)
     }
   }
 
-  _updateBuffer () {
-    this.array.set([this._x, this._y, this._btns], 0)
+  _push (e) {
+    if (this._buffer) {
+      let cursor = RCS.overlays.mouseCursor
+
+      let x = Math.trunc(Math.min(RCS.renderer.width - this._originX, Math.max(this._originX + 1, e.data.global.x)) / cursor.sprite.scale.x)
+      let y = Math.trunc(Math.min(RCS.renderer.height - this._originY, Math.max(this._originY + 1, e.data.global.y)) / cursor.sprite.scale.y)
+
+      let type = _MOUSEMOVE
+      if (e.type === 'mousedown') {
+        type = _MOUSEDOWN
+      }
+      else if (e.type === 'mouseup') {
+        type = _MOUSEUP
+      }
+
+      this._stack.push(type, x, y, this._btns)
+    }
+  }
+
+  pop () {
+    let btns = this._stack.pop()
+    let y = this._stack.pop()
+    let x = this._stack.pop()
+    let type = this._stack.pop()
+
+    return {
+      type,
+      x,
+      y,
+      btns,
+    }
   }
 
 }
