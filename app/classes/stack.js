@@ -4,24 +4,19 @@
 
 const { Emitter } = require('../mixins/common/events')
 const { sizeOf } = require('./memory')
-
-let mem_stacks = {}
+const { Struct, sizeOfFormat } = require('./struct')
 
 class Stack extends Emitter {
 
-  constructor (buffer, rolling = false, entry_type = 'i8', count = 255, entry_size = 0) {
+  constructor (buffer, rolling = false, type = 'i8', count = 255) {
     super()
 
-    this._entry_type = buffer ? buffer.type : entry_type
-    this._entry_size = buffer ? buffer.size : entry_size || sizeOf(this._entry_type)
+    this._type = buffer ? buffer.type : type
     this._count = count
     this._rolling = rolling
-
     this._size = this._count * this._entry_size
 
-    this._buffer = buffer || RCS.memoryManager.alloc(this._entry_type, this._size)
-
-    mem_stacks[this._buffer.top] = this
+    this._buffer = buffer || RCS.memoryManager.alloc(this._type, this._size)
 
     this.reset()
   }
@@ -34,37 +29,49 @@ class Stack extends Emitter {
   get ptr () { return this._ptr }
   get size () { return this._size }
 
-  get entry_type () { return this._entry_type }
-  get entry_size () { return this._entry_size }
+  get type () { return this._type }
   get count () { return this._count }
   get rolling () { return this._rolling }
 
   reset () {
-    this._ptr = this.top
     this.clear()
   }
 
   clear () {
+    this._ptr = this.top
     this.array.fill(0)
+    this._types = []
   }
 
   free () {
-    mem_stacks[this.top] = undefined
   }
 
   push (...value) {
-    let sz = this._entry_size
-    let t = this._entry_type
+    let sz
+    let t = this._type
     let top = this.top
     let bottom = this.bottom
     let rolling = this._rolling
 
     for (let v of value) {
+      if (v instanceof Struct) {
+        this._types.push(v.format)
+        v = v.toBuffer()
+        t = 'i8'
+        sz = v.byteLength
+      }
+      else {
+        t = this._type
+        sz = sizeOf(t)
+        this._types.push(t)
+      }
+
       if (rolling && this._ptr >= bottom) {
         this._buffer.copy(top + sz, top, bottom - sz)
         this._ptr -= sz
       }
-      if (this._ptr + sz < bottom) {
+
+      if (this._ptr + sz <= bottom) {
         this._buffer.write(v, this._ptr, t)
         this._ptr += sz
       }
@@ -75,20 +82,25 @@ class Stack extends Emitter {
   }
 
   pop () {
-    if (this._ptr > this.top) {
-      this._ptr -= this._entry_size
-      return this._buffer.read(this._ptr, this._entry_type)
-    }
-    else {
-      return undefined
-    }
-  }
+    let t = this._types.pop()
+    let sz = sizeOf(t)
+    let value
 
-  get used () { return Math.trunc((this._ptr - this.top) / this._entry_size) }
+    if (this._ptr > this.top) {
+      if (_.isObject(t)) {
+        this._ptr -= sizeOfFormat(t)
+        value = new Struct(t, this._buffer, this._ptr)
+      }
+      else {
+        this._ptr -= sz
+        value = this._buffer.read(this._ptr, t)
+      }
+    }
+    return value
+  }
 
 }
 
 module.exports = {
-  mem_stacks,
   Stack,
 }
