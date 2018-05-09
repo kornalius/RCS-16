@@ -4,317 +4,454 @@
 
 const { Emitter } = require('../mixins/common/events')
 const { path, fs } = require('../utils')
-
-class Token {
-
-  constructor (lexer, type, value, start, end) {
-    if (lexer instanceof Token) {
-      let t = lexer
-      this._lexer = t.lexer
-      this._type = t._type
-      this._reserved = t._reserved
-      this._value = t.value
-      this._start = _.clone(t.start)
-      this._end = _.clone(t.end)
-      this._length = t.value.length
-    }
-    else {
-      this._lexer = lexer
-      this._type = type
-      this._reserved = false
-      this._value = value || ''
-      this._start = start || { offset: 0, line: 0, column: 0 }
-      this._end = end || { offset: 0, line: 0, column: 0 }
-      this._length = this._end.offset - this._start.offset
-    }
-  }
-
-  get lexer () { return this._lexer }
-  get reserved () { return this._reserved }
-  get value () { return this._value }
-  get start () { return this._start }
-  get end () { return this._end }
-  get length () { return this._length }
-
-  get type () {
-    if (this._type === 'math_assign' || this._type === 'logic_assign') {
-      this._type = 'assign'
-    }
-    else if (this._type === 'super') {
-      this._type = 'super'
-    }
-    else if (this._type === 'id') {
-      let r = this._value.match(this._lexer.rom_regexp) // public words
-      if (r && r.length > 0) {
-        this._rom = true
-      }
-    }
-    return this._type
-  }
-
-  is (e) {
-    if (_.isString(e)) {
-      let parts = e.split('|')
-      if (parts.length > 1) {
-        for (let p of parts) {
-          if (this.is(p)) {
-            return true
-          }
-        }
-      }
-      else {
-        return e === '.' || this.type === e || this._value === e
-      }
-    }
-    else if (_.isRegExp(e)) {
-      return this.type.match(e) || this._value.match(e)
-    }
-    else if (_.isArray(e)) {
-      for (let i of e) {
-        if (this.is(i)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  toString () {
-    return _.template('"#{value}" at #{path}(#{line}:#{column})')({ value: this._value, line: this._start.line, column: this._start.column, path: path.basename(this._lexer.path) })
-  }
-
-}
-
+const { error } = require('./compiler')
+const { Frames } = require('./frame')
+const { Token } = require('./tokenizer')
 
 class Lexer extends Emitter {
 
-  constructor (path, text) {
-    this._token_types = {
-      eol: /^[\r\n]|;/,
-      comma: /^,/,
-      colon: /^:(?=[^A-Z_])/i,
+  constructor (parser) {
+    super()
 
-      comment: /^\/\/([^\r\n]*)/,
-
-      reserved: /^(if|then|else|while|const|let)\s+/i,
-
-      hex: /^\$([0-9A-F]+)|0x([0-9A-F]+)/i,
-      number: /^([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/,
-
-      string: /^"([^"]*)"/,
-      char: /^'(.)'/,
-
-      include: /^#"([^"]*)"/i,
-
-      key: /^:([A-Z_][A-Z_0-9]*)/i,
-
-      id: /^([A-Z_][A-Z_0-9]*)/i,
-      id_field: /^\.([A-Z_][A-Z_0-9]*)/i,
-
-      this: /^@(?=[^A-Z_])/i,
-      this_field: /^@([A-Z_][A-Z_0-9]*)/i,
-
-      open_paren: /^\(/,
-      close_paren: /^\)/,
-      open_bracket: /^\[/,
-      close_bracket: /^\]/,
-      open_curly: /^\{/,
-      close_curly: /^\}/,
-
-      symbol: /^[\$]/,
-      math: /^[\+\-\*\/%][^=]/,
-      logic: /^[!&\|\^][^=]/,
-      comp: /^>|<|>=|<=|!=|==/,
-
-      assign: /^(=)[^=>]/,
-      math_assign: /^[\+\-\*\/%]=/,
-      logic_assign: /^[!&\|\^]=/,
-      fn_assign: /^=>/,
-    }
-
-    this.reset(path, text)
+    this._parser = parser
   }
 
-  reset (path, text) {
-    this._errors = 0
-    this._path = path || ''
-    this._text = text || ''
-    this._length = this._text.length
-    this._offset = 0
-    this._line = 1
-    this._column = 1
-    this._tokens = []
-    this._constants = {}
-    return this
+  loop_while (fn, matches, end, end_next, skip) {
+    let nodes = []
+    if (skip) { this.skip(skip) }
+    while (!this.eos && (!end || !this.is(end)) && (!matches || this.match(matches))) {
+      nodes.push(fn.call(this))
+      if (skip) { this.skip(skip) }
+    }
+    if (end) { this.expect(end, end_next) }
+    return nodes
   }
 
-  get token_types () { return this._token_types }
-  get errors () { return this._errors }
-  get path () { return this._path }
-  get text () { return this._text }
-  get length () { return this._length }
-  get offset () { return this._offset }
-  get line () { return this._line }
-  get column () { return this._column }
-  get tokens () { return this._tokens }
-  get constants () { return this._constants }
-
-  validOffset (offset) { return offset >= 0 && offset < this._length }
-
-  eos () { return this.validOffset(this._offset) }
-
-  char_at (i) { return this._text.charAt(i) }
-
-  subtext (i) { return this._text.substring(i) }
-
-  peek () {
-    let pos_info = (offset, line, column) => { return { offset, line, column } }
-
-    let token = null
-    let l = _.last(this._tokens)
-    let offset = this._offset
-    let len = 0
-
-    while ([' ', '\t'].indexOf(this.char_at(offset)) !== -1) {
-      if (l && !l.next_is_space) {
-        l.next_is_space = true
-      }
-      if (!this.validOffset(offset)) {
-        return { token, offset }
-      }
-      offset++
+  next_expr_node (left) {
+    let token = this._token
+    let data = {}
+    if (left) {
+      this.next()
+      data = { left, right: this.expr() }
     }
-
-    let old_offset = offset
-
-    let line = this._line
-    let column = this._column
-    for (let k in this._token_types) {
-      let r = this.subtext(offset).match(this._token_types[k])
-      if (r && r.index === 0) {
-        let value = r.length > 1 ? r.slice(1).join('') : r.join('')
-        len = r[0].length
-        token = new Token(this, k, value, pos_info(offset, line, column), pos_info(offset + len, line, column + len - 1))
-        offset += len
-        break
-      }
-    }
-    if (offset === old_offset) {
-      this._offset = offset + 1
-    }
-    return { token, offset, len }
+    let node = new Node(this, token, data)
+    if (!left) { this.next() }
+    return node
   }
 
-  insertToken (t) {
-    let c = this._constants[t.value]
-    if (_.isArray(c)) {
-      for (let t of c) {
-        this.insertToken(t)
-      }
+  block (end, end_next = true, block_type = null) {
+    if (block_type) {
+      this._frames.start(block_type)
     }
+    let nodes = this.loop_while(this.statement, null, end, end_next, 'eol')
+    if (block_type) {
+      this._frames.end()
+    }
+    return nodes
+  }
+
+  statements () { return this.block() }
+
+  statement () {
+    if (this.match(['let', 'id'])) { return this.var_statement() } // variable definition
+    else if (this.match(['id|id_field|this_field', 'assign|fn_assign'])) { return this.assign_statement() } // variable assignment
+    else if (this.is('if')) { return this.if_statement() } // if block
+    else if (this.is('for')) { return this.for_statement() } // while block
+    else if (this.is('while')) { return this.while_statement() } // while block
+    else if (this.is('return')) { return this.return_statement() } // return from function
+    else if (this.is(['break', 'continue'])) { return this.single() } // single statement
+    else if (this.is('class')) { return this.class_statement() } // class statement
+    else if (this.is(['id', 'super'])) { return this.id_statement() } // function call
     else {
-      this._tokens.push(t)
-    }
-  }
-
-  next () {
-    let { token, offset, len } = this.peek()
-
-    while (token && token._type === 'comment') {
-      let t = this.peek()
-      token = t.token
-      offset = t.offset
-      len = t.len
-      this._offset = offset
-      this._column += len + 1
-    }
-
-    if (token) {
-      if (token.type === 'reserved' && token.value === 'const') {
-        let c = []
-        this._constants[token.value] = c
-        this._offset = offset
-        this._column += len + 1
-        while (true) {
-          let p = this.peek()
-          token = p.token
-          if (token) {
-            this._offset = p.offset
-            this._column += p.len + 1
-          }
-          if (!token || token.is('eol')) {
-            break
-          }
-          if (token) {
-            c.push(token)
-          }
-        }
-      }
-
-      else if (token.type === 'include') {
-        this._offset = offset
-        this._column += len + 1
-        let fn = token.value + (path.extname(token.value) === '' ? '.kod' : '')
-        let pn = path.join(__dirname, fn)
-        try {
-          fs.statSync(pn)
-        }
-        catch (e) {
-          try {
-            pn = path.join(RCS.DIRS.user, fn)
-            fs.statSync(pn)
-          }
-          catch (e) {
-            pn = ''
-          }
-        }
-        if (pn !== '') {
-          let src = fs.readFileSync(pn, 'utf8')
-          let lx = new Lexer(this.vm)
-          lx.run(pn, src)
-          if (!lx.errors) {
-            _.extend(this._constants, lx.constants)
-            this._tokens = this._tokens.concat(lx.tokens)
-          }
-        }
-      }
-
-      else {
-        this.insertToken(token)
-        this._offset = offset
-        this._column += len + 1
-      }
-
-      if (token && token.is('eol')) {
-        this._line++
-        this._column = 1
-      }
-    }
-
-    return token
-  }
-
-  run (path, text) {
-    if (!text) {
-      text = path
-      path = ''
-    }
-    this.reset(path, text)
-    while (this.validOffset(this._offset)) {
+      error(this, this._token, 'syntax error')
       this.next()
     }
-    return this
+    return null
   }
 
-  dump () {
-    console.info('lexer dump')
-    console.log(this._tokens)
-    console.log('')
+  id_statement (first = true) {
+    if (this.is('super')) {
+      return this.super_expr()
+    }
+    else {
+      return this.id_expr(first)
+    }
+  }
+
+  var_statement () {
+    let node = null
+    this.next()
+    if (!this.peek().is('assign|fn_assign')) {
+      let t = new Token(this._token)
+      t.value = '='
+      t._type = 'assign'
+      node = new Node(this, t, { id: this._token, expr: null })
+      this._frames.add(this._token, null, 'var')
+    }
+    else {
+      node = this.assign_statement()
+    }
+    node._let = true
+    return node
+  }
+
+  assign_statement () {
+    let node = null
+    let id = this._token
+    this.next()
+    if (this.is('fn_assign')) {
+      node = this.fn_expr(id, true)
+      id._fn = true
+    }
+    else {
+      node = new Node(this, this._token, { id })
+      this.next()
+      node.data.expr = this.expr()
+    }
+    this._frames.add(id, null, id._fn ? 'fn' : 'var')
+    return node
+  }
+
+  if_statement (expect_end = true) {
+    let token = this._token
+    this.next()
+    let expr_block
+    if (this.is('open_paren')) {
+      this.next()
+      expr_block = this.expr()
+      this.expect('close_paren')
+    }
+    else {
+      expr_block = this.expr()
+    }
+    let true_body = this.block(['else', 'end'], false, 'if')
+    let false_body = this.is('else') ? this.else_statement(false) : null
+    if (expect_end) { this.expect('end') }
+    return new Node(this, token, { expr: expr_block, true_body, false_body })
+  }
+
+  else_statement (expect_end = true) {
+    let token = this._token
+    let node = null
+    this.next()
+    if (this.is('if')) {
+      node = this.if_statement(false)
+      node.token = token
+    }
+    else {
+      node = new Node(this, token, { false_body: this.block('end', false, 'else') })
+    }
+    if (expect_end) { this.expect('end') }
+    return node
+  }
+
+  for_statement () {
+    let token = this._token
+    this.next()
+
+    let v = this._token
+    this.expect('id|var')
+    this.expect('assign')
+    let min_expr = this.expr()
+    this.expect('to')
+    let max_expr = this.expr()
+    let step_expr = null
+    if (this.is('step')) {
+      this.next()
+      step_expr = this.expr()
+    }
+    let body = this.block('end', false, 'for')
+    this.expect('end')
+    return new Node(this, token, { v, min_expr, max_expr, step_expr, body })
+  }
+
+  while_statement () {
+    let token = this._token
+    this.next()
+    let expr_block
+    if (this.is('open_paren')) {
+      this.next()
+      expr_block = this.expr()
+      this.expect('close_paren')
+    }
+    else {
+      expr_block = this.expr()
+    }
+    let body = this.block('end', false, 'while')
+    this.expect('end')
+    return new Node(this, token, { expr: expr_block, body })
+  }
+
+  return_statement () {
+    let p = false
+    let end = 'eol|end|close_paren'
+    let node = new Node(this, this._token)
+    node.data.args = []
+    this.next()
+    if (this.is('open_paren')) {
+      p = true
+      end = 'close_paren'
+      this.next()
+    }
+    if (!p || !this.is('close_paren')) {
+      node.data.args = this.exprs(end, false)
+    }
+    if (p) {
+      this.expect('close_paren')
+    }
+    return node
+  }
+
+  class_list () { return this.loop_while(this.single, ['id'], 'eol', true, 'comma') }
+
+  class_statement () {
+    let token = this._token
+    this.next()
+    let _extends = null
+    let id = this._token
+    this.next()
+    if (this.is(':')) {
+      this.next()
+      _extends = this.class_list()
+    }
+    this._frames.add(id, null, 'class')
+    this._inClass = true
+    let body = this.block('end', false, 'class')
+    this._inClass = false
+    this.expect('end')
+    return new Node(this, token, { id, _extends, body })
+  }
+
+  term_expr (left) { return this.is(/\+|-/) ? this.next_expr_node(left) : null }
+
+  factor_expr (left) { return this.is(/\/|\*/) ? this.next_expr_node(left) : null }
+
+  conditional_expr (left) { return this.is(/>|>=|<|<=|!=|<>|==/) ? this.next_expr_node(left) : null }
+
+  junction_expr (left) { return this.is(/&|\|/) ? this.next_expr_node(left) : null }
+
+  sub_expr () {
+    let nodes = []
+    nodes.push(new Node(this, this._token))
+    this.expect('open_paren')
+    if (!this.is('close_paren')) {
+      nodes.push(this.expr())
+    }
+    nodes.push(new Node(this, this._token))
+    this.expect('close_paren')
+    return nodes
+  }
+
+  simple_expr () {
+    if (this.is(['number', 'string', 'char'])) { return this.next_expr_node() }
+    else if (this.is('fn_assign')) { return this.fn_expr() }
+    else if (this.is('open_paren')) { return this.sub_expr() }
+    else if (this.is('open_bracket')) { return this.array_expr() }
+    else if (this.is('open_curly')) { return this.dict_expr() }
+    else if (this.is(['this', 'this_field'])) { return this.this_expr() }
+    else if (this.is('super')) { return this.super_expr() }
+    else if (this.is('new')) { return this.new_expr() }
+    else if (this.is('id')) { return this.id_expr() }
+    else {
+      error(this, this._token, 'number, string, variable, variable paren or function call/expression expected')
+      this.next()
+    }
+    return null
+  }
+
+  exprs (end, end_next) { return this.loop_while(this.expr, null, end, end_next, 'comma') }
+
+  expr () {
+    let node = this.simple_expr()
+    if (node) {
+      let term = this.term_expr(node)
+      if (term) { return term }
+
+      let factor = this.factor_expr(node)
+      if (factor) { return factor }
+
+      let conditional = this.conditional_expr(node)
+      if (conditional) { return conditional }
+
+      let junction = this.junction_expr(node)
+      if (junction) { return junction }
+    }
+    return node
+  }
+
+  single () {
+    let node = new Node(this, this._token)
+    this.next()
+    return node
+  }
+
+  this_expr () {
+    if (!this._inClass) {
+      error(this, this._token, '@ cannot be used outside class definition')
+      this.next()
+      return null
+    }
+    if (this.is('this')) {
+      return this.next_expr_node()
+    }
+    else if (this.is('this_field')) {
+      return this.id_expr(false)
+    }
+    return null
+  }
+
+  super_expr () {
+    if (!this._inClass) {
+      error(this, this._token, 'super cannot be used outside class definition')
+      this.next()
+      return null
+    }
+    return this.id_expr(false)
+  }
+
+  new_expr () {
+    let token = this._token
+    this.next()
+    let id = this._token
+    this.next()
+    if (!this._frames.exists(id.value, 'class')) {
+      error(this, id, 'undeclared class')
+      return null
+    }
+    let args = []
+    if (this.is('open_paren')) {
+      this.next()
+      if (!this.is('close_paren')) {
+        args = this.exprs('close_paren', false)
+      }
+      this.expect('close_paren')
+    }
+    return new Node(this, token, { id, args })
+  }
+
+  array_expr () {
+    let node = new Node(this, this._token)
+    node.data.args = []
+    this.expect('open_bracket')
+    if (!this.is('close_bracket')) {
+      node.data.args = this.loop_while(this.expr, null, 'close_bracket', false, 'comma|eol')
+    }
+    this.expect('close_bracket')
+    return node
+  }
+
+  dict_expr () {
+    let node = new Node(this, this._token)
+    node.data.def = []
+    this.expect('open_curly')
+    if (!this.is('close_curly')) {
+      node.data.def = this.loop_while(this.key_literal, ['key'], 'close_curly', false, 'comma|eol')
+    }
+    this.expect('close_curly')
+    return node
+  }
+
+  key_literal () {
+    let node = new Node(this, this._token)
+    this.expect('key')
+    node.data.expr = this.expr()
+    return node
+  }
+
+  fn_arg () {
+    this._frames.add(this._token, null, 'var')
+    let node = new Node(this, this._token)
+    this.next()
+    if (this.is('assign')) {
+      this.next()
+      node.data.assign = this.expr()
+    }
+    return node
+  }
+
+  fn_args_def () { return this.loop_while(this.fn_arg, ['id'], 'close_paren', false, 'comma|eol') }
+
+  id_field () {
+    let node = new Node(this, this._token)
+    node.data.args = []
+    node.token._type = 'id'
+    node._field = true
+    this.next()
+    if (this.is('open_bracket')) {
+      if (!node.data.fields) {
+        node.data.fields = []
+      }
+      node.data.fields.push(this.array_expr())
+    }
+    if (this.is('open_paren')) {
+      this.next()
+      node.token._type = 'fn'
+      if (!this.is('close_paren')) {
+        node.data.args = this.exprs('close_paren', false)
+      }
+      this.expect('close_paren')
+    }
+    return node
+  }
+
+  id_expr (first = true) {
+    if (first && !this._token._rom && !this._frames.exists(this._token.value)) {
+      error(this, this._token, 'undeclared identifier')
+      return null
+    }
+    let node = new Node(this, this._token)
+    this.next()
+    if (this.is('open_bracket')) {
+      if (!node.data.fields) {
+        node.data.fields = []
+      }
+      node.data.fields.push(this.array_expr())
+    }
+    if (this.is('open_paren')) {
+      this.next()
+      node.token._type = 'fn'
+      if (!this.is('close_paren')) {
+        node.data.args = this.exprs('close_paren', false)
+      }
+      this.expect('close_paren')
+    }
+    while (this.is(['id_field', 'open_bracket'])) {
+      if (!node.data.fields) {
+        node.data.fields = []
+      }
+      node.data.fields.push(this.id_field())
+      this.skip('comma')
+    }
+    return node
+  }
+
+  fn_expr (id, statement = false) {
+    let node = new Node(this, this._token, { id })
+    node.data.args = []
+    if (statement) {
+      node._in_class = this._inClass
+      node._fnLevel = this._fnLevel++
+    }
+    this.next()
+    this._frames.start('fn')
+    if (this.is('open_paren')) {
+      this.next()
+      if (!this.is('close_paren')) {
+        node.data.args = this.fn_args_def()
+      }
+      this.expect('close_paren')
+    }
+    node.data.body = this.block('end', false)
+    this._frames.end()
+    this.expect('end')
+    if (statement) {
+      this._fnLevel--
+    }
+    return node
   }
 
 }
 
 module.exports = {
-  Token,
   Lexer,
 }

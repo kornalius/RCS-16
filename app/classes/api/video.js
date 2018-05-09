@@ -10,13 +10,18 @@ PIXI.Point.prototype.distance = target => {
 
 const VIDEO_WIDTH = 480
 const VIDEO_HEIGHT = 400
+const VIDEO_SCALE = 2
+const VIDEO_OFFSETX = 0
+const VIDEO_OFFSETY = 0
+const VIDEO_MARGINX = 4
+const VIDEO_MARGINY = 4
 
 RCS.stage = new PIXI.Container()
 RCS.renderer = new PIXI.autoDetectRenderer(100, 100, null, { roundPixels: true, autoResize: true })
 
 class Video extends Emitter {
 
-  constructor (scale = 3, offsetX = 0, offsetY = 0, marginX = 4, marginY = 4) {
+  constructor (scale = VIDEO_SCALE, offsetX = VIDEO_OFFSETX, offsetY = VIDEO_OFFSETY, marginX = VIDEO_MARGINX, marginY = VIDEO_MARGINY) {
     super()
 
     this.force_update = false
@@ -165,4 +170,9 @@ module.exports = {
   Video,
   VIDEO_WIDTH,
   VIDEO_HEIGHT,
+  VIDEO_SCALE,
+  VIDEO_MARGINX,
+  VIDEO_MARGINY,
+  VIDEO_OFFSETX,
+  VIDEO_OFFSETY,
 }
