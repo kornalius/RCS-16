@@ -40,6 +40,7 @@ class Main extends Emitter {
     RCS.video.shut()
     RCS.mouse.shut()
     RCS.keyboard.shut()
+    RCS.sound.shut()
 
     RCS.memoryManager.shut()
   }
@@ -116,6 +117,7 @@ class Main extends Emitter {
       RCS.sprite.tick(t, delta)
       RCS.overlays.tick(t, delta)
       RCS.video.tick(t, delta)
+      RCS.sound.tick(t, delta)
 
       RCS.memoryManager.tick(t, delta)
     }
@@ -131,6 +133,7 @@ class Main extends Emitter {
     await RCS.mouse.boot()
     await RCS.keyboard.boot()
     await RCS.overlays.boot()
+    await RCS.sound.boot()
   }
 
 }
