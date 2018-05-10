@@ -4,102 +4,7 @@
 
 const { Emitter } = require('../mixins/common/events')
 const { path, fs } = require('../utils')
-
-const TOKENS = [
-  ['EOL', /^[\r\n]|;/],
-
-  ['COMMENT', /^\/\/([^\r\n]*)/],
-
-  ['COMMA', /^,/],
-  ['COLON', /^:(?=[^A-Z_])/i],
-
-  ['NUMBER', /^([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)/],
-  ['HEXADECIMAL', /^\$([0-9A-F]+)|0x([0-9A-F]+)/i],
-
-  ['RESERVED', /^(if|then|else|while)\s+/i],
-
-
-  ['STRING', /^"([^"]*)"/],
-  ['CHAR', /^'(.)'/],
-
-  ['INCLUDE', /^#"([^"]*)"/i],
-
-  ['KEY', /^:([A-Z_][A-Z_0-9]*)/i],
-
-  ['ID', /^([A-Z_][A-Z_0-9]*)/i],
-  ['ID_FIELD', /^\.([A-Z_][A-Z_0-9]*)/i],
-
-  ['THIS', /^@(?=[^A-Z_])/i],
-  ['THIS_FIELD', /^@([A-Z_][A-Z_0-9]*)/i],
-
-  ['OPEN_PAREN', /^\(/],
-  ['CLOSE_PAREN', /^\)/],
-  ['OPEN_BRACKET', /^\[/],
-  ['CLOSE_BRACKET', /^\]/],
-  ['OPEN_CURLY', /^\{/],
-  ['CLOSE_CURLY', /^\}/],
-
-  ['SYMBOL', /^[\$]/],
-  ['MATH', /^[\+\-\*\/%][^=]/],
-  ['LOGIC', /^[!&\|\^][^=]/],
-  ['COMP', /^>|<|>=|<=|!=|==/],
-
-  ['ASSIGN', /^(=)[^=>]/],
-  ['MATH_ASSIGN', /^[\+\-\*\/%]=/],
-  ['LOGIC_ASSIGN', /^[!&\|\^]=/],
-  ['FN_ASSIGN', /^=>/],
-]
-
-class Token {
-
-  constructor (tokenizer, type, value, start, end) {
-    this._tokenizer = tokenizer
-    this._type = type
-    this._value = value || ''
-    this._start = start || { offset: 0, line: 0, column: 0 }
-    this._end = end || { offset: 0, line: 0, column: 0 }
-    this._length = this._end.offset - this._start.offset
-  }
-
-  get tokenizer () { return this._tokenizer }
-  get type () { return this._type }
-  get value () { return this._value }
-  get start () { return this._start }
-  get end () { return this._end }
-  get length () { return this._length }
-
-  is (e) {
-    if (_.isString(e)) {
-      let parts = e.split('|')
-      if (parts.length > 1) {
-        for (let p of parts) {
-          if (this.is(p)) {
-            return true
-          }
-        }
-      }
-      else {
-        return e === '.' || this.type === e || this._value === e
-      }
-    }
-    else if (_.isArray(e)) {
-      for (let i of e) {
-        if (this.is(i)) {
-          return true
-        }
-      }
-    }
-    else if (_.isRegExp(e)) {
-      return this.type.match(e) || this._value.match(e)
-    }
-    return false
-  }
-
-  toString () {
-    return _.template('<#{type}> #{value}" at #{path}(#{line}:#{column})')({ type: this._type, value: this._value, line: this._start.line, column: this._start.column, path: path.basename(this._tokenizer.path) })
-  }
-
-}
+const TOKENS = require('./tokens')
 
 class Tokenizer extends Emitter {
 
@@ -109,10 +14,10 @@ class Tokenizer extends Emitter {
     this.reset(path, text)
   }
 
-  reset (text, path) {
+  reset (text = '', path = '') {
     this._errors = 0
-    this._path = path || ''
-    this._text = text || ''
+    this._path = path
+    this._text = text
     this._length = this._text.length
     this._offset = 0
     this._line = 1
@@ -167,7 +72,7 @@ class Tokenizer extends Emitter {
       if (rx && rx.index === 0) {
         let value = rx.length > 1 ? rx.slice(1).join('') : rx.join('')
         len = rx[0].length
-        token = new Token(this, r[0], value, this.posInfo(offset, line, column), this.posInfo(offset + len, line, column + len - 1))
+        token = new TOKENS.Token(this, r[0], value, this.posInfo(offset, line, column), this.posInfo(offset + len, line, column + len - 1))
         offset += len
       }
     }
@@ -185,7 +90,7 @@ class Tokenizer extends Emitter {
 
     // Skip comments
     if (skipComments) {
-      while (token && token._type === 'COMMENT') {
+      while (token && token._type === TOKENS.COMMENT) {
         let t = this.peek()
         token = t.token
         offset = t.offset
@@ -196,7 +101,7 @@ class Tokenizer extends Emitter {
     }
 
     if (token) {
-      if (token.type === 'RESERVED' && token.value === 'CONST') {
+      if (token.type === TOKENS.RESERVED && token.value === TOKENS.CONST) {
         let c = []
         this._constants[token.value] = c
         this._offset = offset
@@ -208,7 +113,7 @@ class Tokenizer extends Emitter {
             this._offset = p.offset
             this._column += p.len + 1
           }
-          if (!token || token.is('EOL')) {
+          if (!token || token.is(TOKENS.EOL)) {
             break
           }
           if (token) {
@@ -217,7 +122,7 @@ class Tokenizer extends Emitter {
         }
       }
 
-      else if (token.type === 'INCLUDE') {
+      else if (token.type === TOKENS.INCLUDE) {
         this._offset = offset
         this._column += len + 1
         let fn = token.value + (path.extname(token.value) === '' ? '.kod' : '')
@@ -251,7 +156,7 @@ class Tokenizer extends Emitter {
         this._column += len + 1
       }
 
-      if (token && token.is('EOL')) {
+      if (token && token.is(TOKENS.EOL)) {
         this._line++
         this._column = 1
       }
@@ -277,7 +182,5 @@ class Tokenizer extends Emitter {
 }
 
 module.exports = {
-  TOKENS,
-  Token,
   Tokenizer,
 }

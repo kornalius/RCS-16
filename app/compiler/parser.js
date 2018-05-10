@@ -5,7 +5,6 @@
 const { Emitter } = require('../mixins/common/events')
 const { error } = require('./compiler')
 const { Frames } = require('./frame')
-const { Lexer } = require('./lexer')
 
 class Node {
 
@@ -23,7 +22,9 @@ class Node {
   get fnLevel () { return this._fnLevel }
   get data () { return this._data }
 
-  tokenProp (name) { return this._token ? this._token[name] : null }
+  tokenProp (name) {
+    return this._token ? this._token[name] : undefined
+  }
 
   get value () { return this.tokenProp('value') }
 
@@ -35,9 +36,13 @@ class Node {
 
   get length () { return this.tokenProp('length') }
 
-  is (e) { return this._token ? this._token.is(e) : false }
+  is (e) {
+    return this._token ? this._token.is(e) : false
+  }
 
-  toString () { return this._token ? this._token.toString() : '' }
+  toString () {
+    return this._token ? this._token.toString() : ''
+  }
 
 }
 
@@ -73,7 +78,7 @@ class Parser extends Emitter {
     this._offset = 0
     this._nodes = []
     this._frames = new Frames()
-    this._prevFrame = null
+    this._prevFrame = undefined
     this._inClass = false
     this._fnLevel = 0
   }
@@ -83,7 +88,7 @@ class Parser extends Emitter {
   }
 
   tokenAt (offset) {
-    return this.validOffset(offset) ? this._tokens[offset] : null
+    return this.validOffset(offset) ? this._tokens[offset] : undefined
   }
 
   skip (e) {
@@ -119,7 +124,7 @@ class Parser extends Emitter {
       }
       tokens.push(token)
     }
-    return tokens.length ? tokens : null
+    return tokens.length ? tokens : undefined
   }
 
   peek (c = 1) {

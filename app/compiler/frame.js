@@ -1,27 +1,104 @@
-import _ from 'lodash'
+/**
+ * @module compiler
+ */
 
-export var Frame
-export var Frames
-export var FrameItem
+const { Emitter } = require('../mixins/common/events')
+const { FN, CLASS, VAR } = require('./tokenizer')
 
-Frames = class {
+class FrameItem extends Emitter {
+
+  constructor (frame, parent, node, item_type) {
+    super()
+
+    this._frame = frame
+    this._parent = parent
+    this._itemType = item_type
+    this._node = node
+  }
+
+  get frame () { return this._frame }
+  get parent () { return this._parent }
+  get itemType () { return this._itemType }
+  get node () { return this._node }
+
+  get name () { return this._node.value }
+  get type () { return this._node.type }
+  get data () { return this._node.data }
+
+  get isVar () { return this._itemType === VAR }
+  get isClass () { return this._itemType === CLASS }
+  get isFn () { return this._itemType === FN }
+  get isLocal () { return this._frame.isLocal }
+  get isGlobal () { return this._frame.isGlobal }
+
+}
+
+class Frame extends Emitter {
+
+  constructor (frames, parent, type) {
+    super()
+
+    this._frames = frames
+    this._parent = parent
+    this._type = type
+    this._items = []
+  }
+
+  get name () { return this._parent ? '$s' : '$g' }
+  get parent () { return this._parent }
+  get type () { return this._type }
+  get items () { return this._items }
+
+  get isLocal () { return this._parent !== null }
+  get isGlobal () { return this._parent === null }
+
+  add (node, parent, item_type) {
+    let i = new FrameItem(this, parent, node, item_type)
+    this._items.push(i)
+    node._global = this.isGlobal
+    return i
+  }
+
+  exists (name, item_type) {
+    return _.find(this._items, item_type ? { name, item_type } : { name })
+  }
+
+  fn_exists (name) {
+    return this.exists(name, FN)
+  }
+
+  var_exists (name) {
+    return this.exists(name, VAR)
+  }
+
+  class_exists (name) {
+    return this.exists(name, CLASS)
+  }
+
+}
+
+class Frames extends Emitter {
 
   constructor () {
+    super ()
+
     this.reset()
   }
 
+  get current () { return this._current }
+
   reset () {
-    this.current = null
+    this._current = null
   }
 
-  start (type) { this.current = new Frame(this, this.current, type) }
+  start (type) { this._current = new Frame(this, this._current, type) }
 
-  end () { this.current = this.current.parent }
+  end () { this._current = this._current.parent }
 
-  add (node, parent, item_type) { return this.current.add(node, parent, item_type) }
+  add (node, parent, item_type) { return this._current.add(node, parent, item_type) }
 
   exists (name, item_type) {
-    let c = this.current
+    let c = this._current
     while (c) {
       let i = c.exists(name, item_type)
       if (i) {
@@ -33,80 +110,21 @@ Frames = class {
   }
 
   fn_exists (name) {
-    return this.exists(name, 'fn')
+    return this.exists(name, FN)
   }
 
   class_exists (name) {
-    return this.exists(name, 'class')
+    return this.exists(name, CLASS)
   }
 
   var_exists (name) {
-    return this.exists(name, 'var')
+    return this.exists(name, VAR)
   }
 
 }
 
-FrameItem = class {
-
-  constructor (frame, parent, node, item_type) {
-    this.frame = frame
-    this.parent = parent
-    this.item_type = item_type
-    this.node = node
-  }
-
-  get data () { return this.node.data }
-
-  get name () { return this.node.value }
-
-  get type () { return this.node.type }
-
-  get is_var () { return this.item_type === 'var' }
-
-  get is_class () { return this.item_type === 'class' }
-
-  get is_fn () { return this.item_type === 'fn' }
-
-  get is_local () { return this.frame.is_local }
-
-  get is_global () { return this.frame.is_global }
-
-}
-
-Frame = class {
-
-  constructor (frames, parent, type) {
-    this.frames = frames
-    this.parent = parent
-    this.type = type
-    this.items = []
-  }
-
-  get name () { return this.parent ? '$s' : '$g' }
-
-  get is_local () { return this.parent !== null }
-
-  get is_global () { return this.parent === null }
-
-  add (node, parent, item_type) {
-    let i = new FrameItem(this, parent, node, item_type)
-    this.items.push(i)
-    node._global = this.is_global
-    return i
-  }
-
-  exists (name, item_type) { return _.find(this.items, item_type ? { name, item_type } : { name }) }
-
-  fn_exists (name) {
-    return this.exists(name, 'fn')
-  }
-
-  var_exists (name) {
-    return this.exists(name, 'var')
-  }
-
-  class_exists (name) {
-    return this.exists(name, 'class')
-  }
-
+module.exports = {
+  Frame,
+  FrameItem,
+  Frames,
 }

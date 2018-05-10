@@ -5,13 +5,13 @@
 const { Tokenizer } = require('./tokenizer')
 const { Lexer } = require('./lexer')
 
-const opcodes = {}
+const OPCODES = {}
 
 const error = function () {
-
+  console.error(...arguments)
 }
 
 module.exports = {
-  opcodes,
+  OPCODES,
   error,
 }
