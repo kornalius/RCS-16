@@ -2,18 +2,10 @@
  * @module compiler
  */
 
-const { Emitter } = require('../mixins/common/events')
-const { path, fs } = require('../utils')
-const { error } = require('./compiler')
-const { Frames } = require('./frame')
 const { Parser } = require('./parser')
 const TOKENS = require('./tokens')
 
 class Lexer extends Parser {
-
-  constructor () {
-    super()
-  }
 
   loop_while (fn, matches, end, end_next, skip) {
     let nodes = []
@@ -90,7 +82,7 @@ class Lexer extends Parser {
       return this.id_statement()
     }
     else {
-      error(this, this._token, 'syntax error')
+      this.error('syntax error')
       this.next()
     }
     return undefined
@@ -311,7 +303,7 @@ class Lexer extends Parser {
       return this.id_expr()
     }
     else {
-      error(this, this._token, 'number, string, variable, variable paren or function call/expression expected')
+      this.error('number, string, variable, variable paren or function call/expression expected')
       this.next()
     }
     return undefined
@@ -355,7 +347,7 @@ class Lexer extends Parser {
 
   this_expr () {
     if (!this._inClass) {
-      error(this, this._token, TOKENS.AMPER + ' cannot be used outside class definition')
+      this.error(TOKENS.AMPER + ' cannot be used outside class definition')
       this.next()
       return undefined
     }
@@ -370,7 +362,7 @@ class Lexer extends Parser {
 
   super_expr () {
     if (!this._inClass) {
-      error(this, this._token, TOKENS.SUPER + ' cannot be used outside class definition')
+      this.error(TOKENS.SUPER + ' cannot be used outside class definition')
       this.next()
       return undefined
     }
@@ -383,7 +375,7 @@ class Lexer extends Parser {
     let id = this._token
     this.next()
     if (!this._frames.exists(id.value, TOKENS.CLASS)) {
-      error(this, id, 'undeclared class')
+      this.error(id, 'undeclared class')
       return undefined
     }
     let args = []
@@ -466,7 +458,7 @@ class Lexer extends Parser {
 
   id_expr (first = true) {
     if (first && !this._token._rom && !this._frames.exists(this._token.value)) {
-      error(this, this._token, 'undeclared identifier')
+      this.error('undeclared identifier')
       return undefined
     }
     let node = new Node(this, this._token)

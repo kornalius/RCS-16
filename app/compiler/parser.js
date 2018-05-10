@@ -3,7 +3,6 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const { error } = require('./compiler')
 const { Frames } = require('./frame')
 
 class Node {
@@ -49,15 +48,12 @@ class Node {
 
 class Parser extends Emitter {
 
-  constructor (tokenizer) {
+  constructor () {
     super()
 
-    this._tokenizer = tokenizer
-    this._tokenizer.parser = this
     this.reset()
   }
 
-  get tokenizer () { return this._tokenizer }
   get errors () { return this._errors }
   get offset () { return this._offset }
   get nodes () { return this._nodes }
@@ -66,8 +62,8 @@ class Parser extends Emitter {
   get inClass () { return this._inClass }
   get fnLevel () { return this._fnLevel }
 
-  get tokens () { return this._tokenizer.tokens }
-  get length () { return this.tokens.length }
+  get tokens () { return this._tokens }
+  get length () { return this._tokens.length }
 
   get eos () { return this._offset >= this.length }
 
@@ -76,6 +72,7 @@ class Parser extends Emitter {
   reset () {
     this._errors = 0
     this._offset = 0
+    this._tokens = []
     this._nodes = []
     this._frames = new Frames()
     this._prevFrame = undefined
@@ -99,10 +96,15 @@ class Parser extends Emitter {
     return this._token ? this._token.is(e) : false
   }
 
+  error () {
+    this._errors++
+    console.error(..._.concat(Array.from(arguments), [this.token.toString()]))
+  }
+
   expect (e, next = true) {
     let r = this._token ? this._token.is(e) : false
     if (!r) {
-      error(this, this._token, e, 'expected')
+      this.error(this._token, e, 'expected')
     }
     else if (next) {
       this.next()
@@ -136,13 +138,14 @@ class Parser extends Emitter {
     return this.tokenAt(this._offset)
   }
 
-  parse () {
+  async parse (tokens = []) {
     this.reset()
+    this._tokens = tokens
     this._frames.start('globals')
     let nodes = this.statements()
     this._frames.end()
     this._nodes = nodes
-    return nodes
+    return this._errors === 0 ? nodes : undefined
   }
 
   dump () {

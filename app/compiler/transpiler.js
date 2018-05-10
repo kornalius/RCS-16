@@ -8,9 +8,9 @@ const TOKENS = require('./tokens')
 
 class Transpiler extends Emitter {
 
-  constructor (nodes = []) {
+  constructor () {
     super ()
-    this.reset(nodes)
+    this.reset()
   }
 
   get errors () { return this._errors }
@@ -25,9 +25,9 @@ class Transpiler extends Emitter {
   get eos () { return this._offset >= this._nodes.length }
   get node () { return this.nodeAt(this._offset) }
 
-  reset (nodes) {
+  reset () {
     this._errors = 0
-    this._nodes = nodes
+    this._nodes = []
     this._lines = []
     this._line = ''
     this._offset = 0
@@ -374,8 +374,9 @@ class Transpiler extends Emitter {
     return str
   }
 
-  transpile (nodes) {
-    this.reset(nodes)
+  async transpile (nodes) {
+    this.reset()
+    this._nodes = nodes
     this.codeStart()
     while (!this.eos) {
       this.writeln(this.statement(this.node))

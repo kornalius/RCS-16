@@ -26,6 +26,8 @@ class Test extends Emitter {
       // RCS.sound.play(n)
 
       RCS.console.draw()
+
+      RCS.main.compile(undefined, 'test.rcs')
     })
   }
 

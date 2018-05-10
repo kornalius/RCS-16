@@ -2,6 +2,12 @@
  * @module compiler
  */
 
+const { path } = require('../utils')
+
+const SPACE = '\\s'
+const TAB = '\\t'
+const UNDERSCORE = '_'
+
 const CR = '\\r'
 const LF = '\\n'
 
@@ -62,6 +68,7 @@ const END = 'END'
 const STEP = 'STEP'
 const TO = 'TO'
 
+const WHITESPACE = 'WHITESPACE'
 const NUMBER = 'NUMBER'
 const HEXADECIMAL = 'HEXADECIMAL'
 const RESERVED = 'RESERVED'
@@ -83,6 +90,8 @@ const MATH = [PLUS, MINUS, MULTIPLY, DIVIDE, MODULUS]
 const LOGIC = [AND, OR, XOR, NOT]
 
 const TOKENS = [
+  [WHITESPACE, new RegExp('^[' + SPACE + TAB + ']')],
+
   [EOL, new RegExp('^[' + CR + LF + ']|' + SEMI_COLON)],
 
   [COMMENT, new RegExp('^\\' + DIVIDE + '\\' + DIVIDE + '([^' + CR + LF + ']*)')],
@@ -134,8 +143,8 @@ const TOKENS = [
   [NOT, new RegExp('^\\' + NOT)],
 
   [ASSIGN, new RegExp('^(' + EQUAL + ')[^' + EQUAL + GREATER + ']')],
-  [MATH_ASSIGN, new RegExp('^([\\' + MATH.join('\\') + ']' + EQUAL)],
-  [LOGIC_ASSIGN, new RegExp('^([\\' + LOGIC.join('\\') + ']' + EQUAL)],
+  [MATH_ASSIGN, new RegExp('^([\\' + MATH.join('\\') + '])' + EQUAL)],
+  [LOGIC_ASSIGN, new RegExp('^([\\' + LOGIC.join('\\') + '])' + EQUAL)],
   [FN_ASSIGN, new RegExp('^' + EQUAL + GREATER)],
 ]
 
@@ -175,12 +184,15 @@ class Token {
   }
 
   toString () {
-    return _.template('<#{type}> #{value}" at #{path}(#{line}:#{column})')({ type: this._type, value: this._value, line: this._start.line, column: this._start.column, path: path.basename(this._tokenizer.path) })
+    return _.template('<{{type}}> {{value}}" at {{path}}({{line}}:{{column}})')({ type: this._type, value: this._value, line: this._start.line, column: this._start.column, path: path.basename(this._tokenizer.path) })
   }
 
 }
 
 module.exports = {
+  SPACE,
+  TAB,
+  UNDERSCORE,
   CR,
   LF,
   COMMA,
@@ -237,6 +249,7 @@ module.exports = {
   END,
   STEP,
   TO,
+  WHITESPACE,
   NUMBER,
   HEXADECIMAL,
   RESERVED,

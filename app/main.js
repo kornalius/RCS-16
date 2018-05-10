@@ -3,10 +3,12 @@
  */
 
 const { Emitter } = require('./mixins/common/events')
+const { Compiler, error } = require('./compiler/compiler')
+const { fs, path } = require('./utils')
 
-const _STOPPED = 0
-const _RUNNING = 1
-const _PAUSED = 2
+const STOPPED = 0
+const RUNNING = 1
+const PAUSED = 2
 
 class Main extends Emitter {
 
@@ -21,7 +23,7 @@ class Main extends Emitter {
   }
 
   reset () {
-    this._state = _STOPPED
+    this._state = STOPPED
     this._program = {
       path: undefined,
       code: undefined,
@@ -52,15 +54,15 @@ class Main extends Emitter {
     }
   }
 
-  get isRunning () { return this._state === _RUNNING }
+  get isRunning () { return this._state === RUNNING }
 
-  get isPaused () { return this._state === _PAUSED }
+  get isPaused () { return this._state === PAUSED }
 
   get program () { return this._program }
 
   start () {
     if (!this.isRunning) {
-      this.state = _RUNNING
+      this.state = RUNNING
       this.emit('start')
     }
     return this
@@ -68,7 +70,7 @@ class Main extends Emitter {
 
   stop () {
     if (this.isRunning) {
-      this.state = _STOPPED
+      this.state = STOPPED
       this.emit('stop')
     }
     return this
@@ -76,7 +78,7 @@ class Main extends Emitter {
 
   pause () {
     if (!this.isPaused) {
-      this.state = _PAUSED
+      this.state = PAUSED
       this.emit('paused')
     }
     return this
@@ -84,18 +86,41 @@ class Main extends Emitter {
 
   resume () {
     if (this.isPaused) {
-      this.state = _RUNNING
+      this.state = RUNNING
       this.emit('resume')
     }
     return this
   }
 
-  load (path, text) {
-    return Function(text)
+  async compile (text = '', path) {
+    let compiler = new Compiler()
+    let code = await compiler.compile(text, path)
+    return code ? Function(code) : undefined
+  }
+
+  async exists (path) {
+    try {
+      await fs.stat(path)
+      return true
+    }
+    catch (e) {
+      return false
+    }
+  }
+
+  async load (path) {
+    let fn = path.join(RCS.DIRS.user, path)
+    if (!await this.exists(fn)) {
+      fn = path.join(RCS.DIRS.cwd, path)
+    }
+    return await fs.readFile(fn, 'utf8')
   }
 
   error (e) {
-    console.error(e.message)
+    if (_.isError(e)) {
+      e = e.message
+    }
+    error(e)
   }
 
   run (fn, ...args) {
@@ -108,7 +133,7 @@ class Main extends Emitter {
   }
 
   tick (delta) {
-    if (this.state === _RUNNING) {
+    if (this.state === RUNNING) {
       let t = performance.now()
 
       RCS.mouse.tick(t, delta)
