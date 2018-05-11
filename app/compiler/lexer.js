@@ -2,7 +2,7 @@
  * @module compiler
  */
 
-const { Parser } = require('./parser')
+const { Parser, Node } = require('./parser')
 const TOKENS = require('./tokens')
 
 class Lexer extends Parser {
@@ -25,7 +25,7 @@ class Lexer extends Parser {
   }
 
   next_expr_node (left) {
-    let token = this._token
+    let token = this.token
     let data = {}
     if (left) {
       this.next()
@@ -100,12 +100,13 @@ class Lexer extends Parser {
   var_statement () {
     let node
     this.next()
-    if (!this.peek().is([TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) {
-      let t = new TOKENS.Token(this._token)
-      t.value = '='
+    let peek = this.peek()
+    if (peek && !peek.is([TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) {
+      let t = new TOKENS.Token(this.token)
+      t._value = '='
       t._type = TOKENS.ASSIGN
-      node = new Node(this, t, { id: this._token, expr: undefined })
-      this._frames.add(this._token, undefined, TOKENS.VAR)
+      node = new Node(this, t, { id: this.token, expr: undefined })
+      this._frames.add(this.token, undefined, TOKENS.VAR)
     }
     else {
       node = this.assign_statement()
@@ -116,14 +117,14 @@ class Lexer extends Parser {
 
   assign_statement () {
     let node
-    let id = this._token
+    let id = this.token
     this.next()
     if (this.is(TOKENS.FN_ASSIGN)) {
       node = this.fn_expr(id, true)
       id._fn = true
     }
     else {
-      node = new Node(this, this._token, { id })
+      node = new Node(this, this.token, { id })
       this.next()
       node.data.expr = this.expr()
     }
@@ -132,7 +133,7 @@ class Lexer extends Parser {
   }
 
   if_statement (expect_end = true) {
-    let token = this._token
+    let token = this.token
     this.next()
     let expr_block
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -152,7 +153,7 @@ class Lexer extends Parser {
   }
 
   else_statement (expect_end = true) {
-    let token = this._token
+    let token = this.token
     let node
     this.next()
     if (this.is(TOKENS.IF)) {
@@ -169,10 +170,10 @@ class Lexer extends Parser {
   }
 
   for_statement () {
-    let token = this._token
+    let token = this.token
     this.next()
 
-    let v = this._token
+    let v = this.token
     this.expect([TOKENS.ID, TOKENS.VAR], TOKENS.ASSIGN)
     let min_expr = this.expr()
     this.expect(TOKENS.TO)
@@ -188,7 +189,7 @@ class Lexer extends Parser {
   }
 
   while_statement () {
-    let token = this._token
+    let token = this.token
     this.next()
     let expr_block
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -207,7 +208,7 @@ class Lexer extends Parser {
   return_statement () {
     let p = false
     let end = [TOKENS.EOL, TOKENS.END, TOKENS.CLOSE_PAREN]
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     node.data.args = []
     this.next()
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -229,10 +230,10 @@ class Lexer extends Parser {
   }
 
   class_statement () {
-    let token = this._token
+    let token = this.token
     this.next()
     let _extends
-    let id = this._token
+    let id = this.token
     this.next()
     if (this.is(TOKENS.COLON)) {
       this.next()
@@ -264,12 +265,12 @@ class Lexer extends Parser {
 
   sub_expr () {
     let nodes = []
-    nodes.push(new Node(this, this._token))
+    nodes.push(new Node(this, this.token))
     this.expect(TOKENS.OPEN_PAREN)
     if (!this.is(TOKENS.CLOSE_PAREN)) {
       nodes.push(this.expr())
     }
-    nodes.push(new Node(this, this._token))
+    nodes.push(new Node(this, this.token))
     this.expect(TOKENS.CLOSE_PAREN)
     return nodes
   }
@@ -299,7 +300,7 @@ class Lexer extends Parser {
     else if (this.is(TOKENS.NEW)) {
       return this.new_expr()
     }
-    else if (this.TOKENS.is(TOKENS.ID)) {
+    else if (this.is(TOKENS.ID)) {
       return this.id_expr()
     }
     else {
@@ -340,7 +341,7 @@ class Lexer extends Parser {
   }
 
   single () {
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     this.next()
     return node
   }
@@ -370,9 +371,9 @@ class Lexer extends Parser {
   }
 
   new_expr () {
-    let token = this._token
+    let token = this.token
     this.next()
-    let id = this._token
+    let id = this.token
     this.next()
     if (!this._frames.exists(id.value, TOKENS.CLASS)) {
       this.error(id, 'undeclared class')
@@ -390,7 +391,7 @@ class Lexer extends Parser {
   }
 
   array_expr () {
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     node.data.args = []
     this.expect(TOKENS.OPEN_BRACKET)
     if (!this.is(TOKENS.CLOSE_BRACKET)) {
@@ -401,7 +402,7 @@ class Lexer extends Parser {
   }
 
   dict_expr () {
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     node.data.def = []
     this.expect(TOKENS.OPEN_CURLY)
     if (!this.is(TOKENS.CLOSE_CURLY)) {
@@ -412,15 +413,15 @@ class Lexer extends Parser {
   }
 
   key_literal () {
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     this.expect(TOKENS.KEY)
     node.data.expr = this.expr()
     return node
   }
 
   fn_arg () {
-    this._frames.add(this._token, undefined, TOKENS.VAR)
-    let node = new Node(this, this._token)
+    this._frames.add(this.token, undefined, TOKENS.VAR)
+    let node = new Node(this, this.token)
     this.next()
     if (this.is(TOKENS.ASSIGN)) {
       this.next()
@@ -434,7 +435,7 @@ class Lexer extends Parser {
   }
 
   id_field () {
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     node.data.args = []
     node.token._type = TOKENS.ID
     node._field = true
@@ -457,11 +458,11 @@ class Lexer extends Parser {
   }
 
   id_expr (first = true) {
-    if (first && !this._token._rom && !this._frames.exists(this._token.value)) {
+    if (first && !this.token._rom && !this._frames.exists(this.token.value)) {
       this.error('undeclared identifier')
       return undefined
     }
-    let node = new Node(this, this._token)
+    let node = new Node(this, this.token)
     this.next()
     if (this.is(TOKENS.OPEN_BRACKET)) {
       if (!node.data.fields) {
@@ -488,7 +489,7 @@ class Lexer extends Parser {
   }
 
   fn_expr (id, statement = false) {
-    let node = new Node(this, this._token, { id })
+    let node = new Node(this, this.token, { id })
     node.data.args = []
     if (statement) {
       node._in_class = this._inClass

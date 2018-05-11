@@ -114,7 +114,7 @@ class Transpiler extends Emitter {
       }
 
       t = {
-        tmpl: '#{_let}#{id}#{op}#{expr}',
+        tmpl: '{{_let}}{{id}}{{op}}{{expr}}',
         dat: { _let, id, op, expr }
       }
     }
@@ -122,7 +122,7 @@ class Transpiler extends Emitter {
   }
 
   fn_def (args, body, in_class) {
-    return _.template('#{fn}(#{args}) #{body}')({
+    return _.template('{{fn}}({{args}}) {{body}}')({
       fn: !in_class ? 'function ' : '',
       args: this.expr(args, ', '),
       body: this.block(body),
@@ -134,7 +134,7 @@ class Transpiler extends Emitter {
     if (node) {
       let d = node.data || {}
       t = {
-        tmpl: '#{field}#{public}#{fn}(#{args})',
+        tmpl: '{{field}}{{public}}{{fn}}({{args}})',
         dat: {
           field: node._field ? '.' : '',
           public: node._rom ? '_vm.rom.' : '',
@@ -166,7 +166,7 @@ class Transpiler extends Emitter {
       }
       else if (node.is(TOKENS.IF)) {
         t = {
-          tmpl: 'if (#{expr}) #{true_body}#{false_body}',
+          tmpl: 'if ({{expr}}) {{true_body}}{{false_body}}',
           dat: {
             expr: this.expr(d.expr),
             true_body: this.block(d.true_body),
@@ -177,7 +177,7 @@ class Transpiler extends Emitter {
       else if (node.is(TOKENS.ELSE)) {
         if (d.expr) { // else if
           t = {
-            tmpl: 'else if (#{expr}) #{true_body}#{false_body}',
+            tmpl: 'else if ({{expr}}) {{true_body}}{{false_body}}',
             dat: {
               expr: this.expr(d.expr),
               true_body: this.block(d.true_body),
@@ -187,14 +187,14 @@ class Transpiler extends Emitter {
         }
         else {
           t = {
-            tmpl: 'else #{false_body}',
+            tmpl: 'else {{false_body}}',
             dat: { false_body: this.block(d.false_body) }
           }
         }
       }
       else if (node.is(TOKENS.WHILE)) {
         t = {
-          tmpl: 'while (#{expr}) #{body}',
+          tmpl: 'while ({{expr}}) {{body}}',
           dat: {
             expr: this.expr(d.expr),
             body: this.block(d.body),
@@ -203,7 +203,7 @@ class Transpiler extends Emitter {
       }
       else if (node.is(TOKENS.FOR)) {
         t = {
-          tmpl: 'for (let #{v} = #{min_expr}; #{v} < #{max_expr}; #{v} += #{step_expr}) #{body}',
+          tmpl: 'for (let {{v}} = {{min_expr}}; {{v}} < {{max_expr}}; {{v}} += {{step_expr}}) {{body}}',
           dat: {
             v: d.v.value,
             min_expr: this.expr(d.min_expr),
@@ -215,19 +215,19 @@ class Transpiler extends Emitter {
       }
       else if (node.is(TOKENS.RETURN)) {
         t = {
-          tmpl: 'return #{args}',
+          tmpl: 'return {{args}}',
           dat: { args: this.expr(d.args, ', ') }
         }
       }
       else if (node.is([TOKENS.BREAK, TOKENS.CONTINUE])) {
         t = {
-          tmpl: '#{word}',
+          tmpl: '{{word}}',
           dat: { word: node.value }
         }
       }
       else if (node.is(TOKENS.CLASS)) {
         t = {
-          tmpl: 'class #{name}#{_extends} #{body}',
+          tmpl: 'class {{name}}{{_extends}} {{body}}',
           dat: {
             name: d.id.value,
             _extends: d._extends ? ' extends ' + this.expr(d._extends, ', ') : '',
@@ -275,7 +275,7 @@ class Transpiler extends Emitter {
       if (node) {
         if (_.isString(node)) {
           t = {
-            tmpl: '#{node}',
+            tmpl: '{{node}}',
             dat: { node }
           }
         }
@@ -284,13 +284,13 @@ class Transpiler extends Emitter {
         }
         else if (node.is(TOKENS.FN_ASSIGN)) {
           t = {
-            tmpl: '#{fn}',
+            tmpl: '{{fn}}',
             dat: { fn: this.fn_def(d.args, d.body) }
           }
         }
         else if (node.is(TOKENS.OPEN_BRACKET)) {
           t = {
-            tmpl: '[#{args}]#{fields}',
+            tmpl: '[{{args}}]{{fields}}',
             dat: {
               args: this.expr(d.args, ', '),
               fields: d.fields ? this.expr(d.fields, '') : '',
@@ -298,9 +298,9 @@ class Transpiler extends Emitter {
           }
         }
         else if (node.is(TOKENS.OPEN_CURLY)) {
-          let def = _.map(d.def, f => _.template('#{value}: #{expr}')({ value: f.value, expr: this.expr(f.data.expr) }))
+          let def = _.map(d.def, f => _.template('{{value}}: {{expr}}')({ value: f.value, expr: this.expr(f.data.expr) }))
           t = {
-            tmpl: '{#{def}}#{fields}',
+            tmpl: '{{{def}}}{{fields}}',
             dat: {
               def: this.expr(def, ', '),
               fields: d.fields ? this.expr(d.fields, '') : ''
@@ -309,7 +309,7 @@ class Transpiler extends Emitter {
         }
         else if (node.is([TOKENS.MATH, TOKENS.LOGIC, TOKENS.COMP])) {
           t = {
-            tmpl: '#{left} #{op} #{right}',
+            tmpl: '{{left}} {{op}} {{right}}',
             dat: {
               op: node.value,
               left: this.expr(d.left),
@@ -319,7 +319,7 @@ class Transpiler extends Emitter {
         }
         else if (node.is([TOKENS.THIS, TOKENS.THIS_FIELD])) {
           t = {
-            tmpl: 'this#{dot}#{field}#{fields}',
+            tmpl: 'this{{dot}}{{field}}{{fields}}',
             dat: {
               dot: node.is(TOKENS.THIS_FIELD) ? '.' : '',
               field: node.is(TOKENS.THIS_FIELD) ? node.value : '',
@@ -329,13 +329,13 @@ class Transpiler extends Emitter {
         }
         else if (node.is([TOKENS.CHAR, TOKENS.STRING])) {
           t = {
-            tmpl: '#{value}',
+            tmpl: '{{value}}',
             dat: { value: this.str(node.value) }
           }
         }
         else if (node.is(TOKENS.NEW)) {
           t = {
-            tmpl: 'new #{id}(#{args})',
+            tmpl: 'new {{id}}({{args}})',
             dat: {
               id: d.id.value,
               args: this.expr(d.args, ', '),
@@ -344,7 +344,7 @@ class Transpiler extends Emitter {
         }
         else if (node.is(TOKENS.ID)) {
           t = {
-            tmpl: '#{field}#{public}#{value}#{fields}#{assign}',
+            tmpl: '{{field}}{{public}}{{value}}{{fields}}{{assign}}',
             dat: {
               field: node._field ? '.' : '',
               public: node._rom ? '_vm.rom.' : '',
@@ -356,7 +356,7 @@ class Transpiler extends Emitter {
         }
         else {
           t = {
-            tmpl: '#{value}',
+            tmpl: '{{value}}',
             dat: { value: node.value }
           }
         }

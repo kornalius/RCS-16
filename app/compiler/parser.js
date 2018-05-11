@@ -93,18 +93,18 @@ class Parser extends Emitter {
   }
 
   is (e) {
-    return this._token ? this._token.is(e) : false
+    return this.token ? this.token.is(e) : false
   }
 
   error () {
     this._errors++
-    console.error(..._.concat(Array.from(arguments), [this.token.toString()]))
+    console.error(..._.concat(Array.from(arguments), this.token ? [this.token.toString()] : []))
   }
 
   expect (e, next = true) {
-    let r = this._token ? this._token.is(e) : false
+    let r = this.is(e)
     if (!r) {
-      this.error(this._token, e, 'expected')
+      this.error(this.token, e, 'expected')
     }
     else if (next) {
       this.next()

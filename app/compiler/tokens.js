@@ -89,8 +89,8 @@ const COMP = [GREATER, LESSER, GREATER + EQUAL, LESSER_EQUAL, NOT_EQUAL, EQUAL_E
 const MATH = [PLUS, MINUS, MULTIPLY, DIVIDE, MODULUS]
 const LOGIC = [AND, OR, XOR, NOT]
 
-const TOKENS = [
-  [WHITESPACE, new RegExp('^[' + SPACE + TAB + ']')],
+const RULES = [
+  [WHITESPACE, new RegExp('^[' + SPACE + TAB + ']+')],
 
   [EOL, new RegExp('^[' + CR + LF + ']|' + SEMI_COLON)],
 
@@ -102,7 +102,7 @@ const TOKENS = [
   [NUMBER, new RegExp('^(' + MINUS_PLUS + '?' + NUM + '*\\.?' + NUM + '+([eE]' + MINUS_PLUS + '?' + NUM + '+)?)')],
   [HEXADECIMAL, new RegExp('^0x(' + HEXA + '+)', 'i')],
 
-  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, NEW, SUPER, END, STEP, TO].join('|') + ')\s+', 'i')],
+  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, NEW, SUPER, END, STEP, TO].join('|') + ')' + SPACE + '+', 'i')],
 
   [STRING, new RegExp('^' + DOUBLE_QUOTE + '([^' + DOUBLE_QUOTE + ']*)' + DOUBLE_QUOTE)],
   [CHAR, new RegExp('^' + QUOTE + '(.)' + QUOTE)],
@@ -116,6 +116,11 @@ const TOKENS = [
 
   [THIS, new RegExp('^' + AMPER + '(?=' + NOT_ALPHA + ')', 'i')],
   [THIS_FIELD, new RegExp('^' + AMPER + '(' + ALPHA + ALPHA_NUM + '*)', 'i')],
+
+  [ASSIGN, new RegExp('^(' + EQUAL + ')[^' + EQUAL + GREATER + ']')],
+  [MATH_ASSIGN, new RegExp('^([\\' + MATH.join('\\') + '])' + EQUAL)],
+  [LOGIC_ASSIGN, new RegExp('^([\\' + LOGIC.join('\\') + '])' + EQUAL)],
+  [FN_ASSIGN, new RegExp('^' + EQUAL + GREATER)],
 
   [OPEN_PAREN, new RegExp('^\\' + OPEN_PAREN)],
   [CLOSE_PAREN, new RegExp('^\\' + CLOSE_PAREN)],
@@ -141,34 +146,47 @@ const TOKENS = [
   [OR, new RegExp('^\\' + OR)],
   [XOR, new RegExp('^\\' + XOR)],
   [NOT, new RegExp('^\\' + NOT)],
-
-  [ASSIGN, new RegExp('^(' + EQUAL + ')[^' + EQUAL + GREATER + ']')],
-  [MATH_ASSIGN, new RegExp('^([\\' + MATH.join('\\') + '])' + EQUAL)],
-  [LOGIC_ASSIGN, new RegExp('^([\\' + LOGIC.join('\\') + '])' + EQUAL)],
-  [FN_ASSIGN, new RegExp('^' + EQUAL + GREATER)],
 ]
 
 class Token {
 
-  constructor (tokenizer, type, value = '', start = { offset: 0, line: 0, column: 0 }, end = { offset: 0, line: 0, column: 0 }) {
+  constructor (tokenizer, type, value = '', start, end, indent) {
     this._tokenizer = tokenizer
     this._type = type
     this._value = value
     this._start = start
     this._end = end
-    this._length = this._end.offset - this._start.offset
+    this._indent = indent
   }
 
   get tokenizer () { return this._tokenizer }
-  get type () { return this._type }
+
+  get type () {
+    if (this._type === RESERVED) {
+      return this._value.toUpperCase()
+    }
+    return this._type
+  }
+
   get value () { return this._value }
-  get start () { return this._start }
-  get end () { return this._end }
-  get length () { return this._length }
+  get start () { return this._offsetPos(this._start) }
+  get end () { return this._offsetPos(this._end) }
+  get length () { return this._end - this._start }
+  get indent () { return this._indent }
+
+  _offsetPos (offset) {
+    let tokenizer = this._tokenizer
+    let line = tokenizer.lineFromOffset(offset)
+    return {
+      offset: offset,
+      line: line,
+      column: offset - tokenizer.lineOffsets[line],
+    }
+  }
 
   is (e) {
     if (_.isString(e)) {
-      return e === '.' || this.type === e || this._value === e
+      return this._type === e || this.type === e || this._value === e
     }
     else if (_.isArray(e)) {
       for (let i of e) {
@@ -178,13 +196,13 @@ class Token {
       }
     }
     else if (_.isRegExp(e)) {
-      return this.type.match(e) || this._value.match(e)
+      return this.type.match(e) || this._type.match(e) || this._value.match(e)
     }
     return false
   }
 
   toString () {
-    return _.template('<{{type}}> {{value}}" at {{path}}({{line}}:{{column}})')({ type: this._type, value: this._value, line: this._start.line, column: this._start.column, path: path.basename(this._tokenizer.path) })
+    return _.template('{{type}} "{{value}}" at {{path}}({{line}}:{{column}})')({ type: this._type, value: this._value, line: this.start.line, column: this.start.column, path: path.basename(this._tokenizer.path) })
   }
 
 }
@@ -269,7 +287,7 @@ module.exports = {
   MATH,
   LOGIC,
 
-  TOKENS,
+  RULES,
 
   Token,
 }
