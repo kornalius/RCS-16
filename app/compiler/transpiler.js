@@ -134,12 +134,11 @@ class Transpiler extends Emitter {
     if (node) {
       let d = node.data || {}
       t = {
-        tmpl: '{{field}}{{public}}{{fn}}({{args}})',
+        tmpl: '{{field}}{{fn}}({{args}})',
         dat: {
           field: node._field ? '.' : '',
-          public: node._rom ? '_vm.rom.' : '',
           fn: node.value,
-          args: this.expr(d.args, ', '),
+          args: !_.isEmpty(d.args) ? this.expr(d.args, ', ') : '',
         }
       }
     }
@@ -162,6 +161,7 @@ class Transpiler extends Emitter {
         t = this.assign(node)
       }
       else if (node.is(TOKENS.FN)) {
+        debugger
         t = this.fn_call(node, true)
       }
       else if (node.is(TOKENS.IF)) {
@@ -216,7 +216,9 @@ class Transpiler extends Emitter {
       else if (node.is(TOKENS.RETURN)) {
         t = {
           tmpl: 'return {{args}}',
-          dat: { args: this.expr(d.args, ', ') }
+          dat: {
+            args: !_.isEmpty(d.args) ? this.expr(d.args, ', ') : '',
+          }
         }
       }
       else if (node.is([TOKENS.BREAK, TOKENS.CONTINUE])) {
@@ -285,15 +287,17 @@ class Transpiler extends Emitter {
         else if (node.is(TOKENS.FN_ASSIGN)) {
           t = {
             tmpl: '{{fn}}',
-            dat: { fn: this.fn_def(d.args, d.body) }
+            dat: {
+              fn: this.fn_def(d.args, d.body),
+            }
           }
         }
         else if (node.is(TOKENS.OPEN_BRACKET)) {
           t = {
             tmpl: '[{{args}}]{{fields}}',
             dat: {
-              args: this.expr(d.args, ', '),
-              fields: d.fields ? this.expr(d.fields, '') : '',
+              args: !_.isEmpty(d.args) ? this.expr(d.args, ', ') : '',
+              fields: !_.isEmpty(d.fields) ? this.expr(d.fields, '') : '',
             }
           }
         }
@@ -303,7 +307,7 @@ class Transpiler extends Emitter {
             tmpl: '{{{def}}}{{fields}}',
             dat: {
               def: this.expr(def, ', '),
-              fields: d.fields ? this.expr(d.fields, '') : ''
+              fields: !_.isEmpty(d.fields) ? this.expr(d.fields, '') : ''
             }
           }
         }
@@ -323,7 +327,7 @@ class Transpiler extends Emitter {
             dat: {
               dot: node.is(TOKENS.THIS_FIELD) ? '.' : '',
               field: node.is(TOKENS.THIS_FIELD) ? node.value : '',
-              fields: d.fields ? this.expr(d.fields, '') : '',
+              fields: !_.isEmpty(d.fields) ? this.expr(d.fields, '') : '',
             }
           }
         }
@@ -338,7 +342,7 @@ class Transpiler extends Emitter {
             tmpl: 'new {{id}}({{args}})',
             dat: {
               id: d.id.value,
-              args: this.expr(d.args, ', '),
+              args: !_.isEmpty(d.args) ? this.expr(d.args, ', ') : '',
             }
           }
         }
@@ -349,7 +353,7 @@ class Transpiler extends Emitter {
               field: node._field ? '.' : '',
               public: node._rom ? '_vm.rom.' : '',
               value: node.value,
-              fields: d.fields ? this.expr(d.fields, '') : '',
+              fields: !_.isEmpty(d.fields) ? this.expr(d.fields, '') : '',
               assign: d.assign ? ' = ' + this.expr(d.assign, '') : '',
             }
           }

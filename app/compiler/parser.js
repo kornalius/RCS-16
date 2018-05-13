@@ -3,37 +3,27 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const { Frames } = require('./frame')
+const TOKENS = require('./tokens')
 
 class Node {
 
-  constructor (parser, token, data = {}) {
-    this._parser = parser
+  constructor (token, data = {}) {
     this._token = token
+    this._data = _.extend({}, data, { fields: [], args: [] })
     this._inClass = false
     this._fnLevel = 0
-    this._data = data
   }
 
-  get parser () { return this._parser }
-  get token () { return this._token }
   get inClass () { return this._inClass }
   get fnLevel () { return this._fnLevel }
   get data () { return this._data }
 
-  tokenProp (name) {
-    return this._token ? this._token[name] : undefined
-  }
-
-  get value () { return this.tokenProp('value') }
-
-  get type () { return this.tokenProp('type') }
-
-  get start () { return this.tokenProp('start') }
-
-  get end () { return this.tokenProp('end') }
-
-  get length () { return this.tokenProp('length') }
+  get token () { return this._token }
+  get value () { return _.get(this._token, 'value') }
+  get type () { return _.get(this._token, 'type') }
+  get start () { return _.get(this._token, 'start', 0) }
+  get end () { return _.get(this._token, 'end', this.length) }
+  get length () { return _.get(this._token, 'length', 0) }
 
   is (e) {
     return this._token ? this._token.is(e) : false
@@ -64,9 +54,7 @@ class Parser extends Emitter {
 
   get tokens () { return this._tokens }
   get length () { return this._tokens.length }
-
   get eos () { return this._offset >= this.length }
-
   get token () { return this.tokenAt(this._offset) }
 
   reset () {
@@ -74,7 +62,7 @@ class Parser extends Emitter {
     this._offset = 0
     this._tokens = []
     this._nodes = []
-    this._frames = new Frames()
+    this._frames = new RCS.Compiler.Frames()
     this._prevFrame = undefined
     this._inClass = false
     this._fnLevel = 0
@@ -104,7 +92,10 @@ class Parser extends Emitter {
   expect (e, next = true) {
     let r = this.is(e)
     if (!r) {
-      this.error(this.token, e, 'expected')
+      if (_.isArray(e)) {
+        e = e.join(' or ')
+      }
+      this.error(e, 'expected')
     }
     else if (next) {
       this.next()
@@ -140,11 +131,19 @@ class Parser extends Emitter {
 
   async parse (tokens = []) {
     this.reset()
+
     this._tokens = tokens
-    this._frames.start('globals')
+
+    this._frames.start(TOKENS.GLOBALS, true)
+
+    this._frames.add('print', TOKENS.FN, function () { console.log(...arguments) })
+
     let nodes = this.statements()
+
     this._frames.end()
+
     this._nodes = nodes
+
     return this._errors === 0 ? nodes : undefined
   }
 

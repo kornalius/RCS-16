@@ -3,76 +3,68 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const { FN, CLASS, VAR } = require('./tokenizer')
+const TOKENS = require('./tokens')
 
 class FrameItem extends Emitter {
 
-  constructor (frame, parent, node, item_type) {
+  constructor (frame, name, type, data) {
     super()
 
     this._frame = frame
-    this._parent = parent
-    this._itemType = item_type
-    this._node = node
+    this._name = name
+    this._type = type
+    this._data = data
   }
 
   get frame () { return this._frame }
-  get parent () { return this._parent }
-  get itemType () { return this._itemType }
-  get node () { return this._node }
+  get name () { return this._name }
+  get type () { return this._type }
+  get data () { return this._data }
+  get local () { return this._frame.local }
+  get global () { return this._frame.global }
 
-  get name () { return this._node.value }
-  get type () { return this._node.type }
-  get data () { return this._node.data }
-
-  get isVar () { return this._itemType === VAR }
-  get isClass () { return this._itemType === CLASS }
-  get isFn () { return this._itemType === FN }
-  get isLocal () { return this._frame.isLocal }
-  get isGlobal () { return this._frame.isGlobal }
+  get isVar () { return this._type === TOKENS.VAR }
+  get isClass () { return this._type === TOKENS.CLASS }
+  get isFn () { return this._type === TOKENS.FN }
 
 }
 
 class Frame extends Emitter {
 
-  constructor (frames, parent, type) {
+  constructor (frames, type, global = false) {
     super()
 
     this._frames = frames
-    this._parent = parent
     this._type = type
+    this._global = global
     this._items = []
   }
 
-  get name () { return this._parent ? '$s' : '$g' }
-  get parent () { return this._parent }
   get type () { return this._type }
   get items () { return this._items }
+  get local () { return !this._global }
+  get global () { return this._global }
 
-  get isLocal () { return this._parent !== null }
-  get isGlobal () { return this._parent === null }
-
-  add (node, parent, item_type) {
-    let i = new FrameItem(this, parent, node, item_type)
+  add (name, type, data) {
+    let i = new FrameItem(this, name, type, data)
     this._items.push(i)
-    node._global = this.isGlobal
     return i
   }
 
-  exists (name, item_type) {
-    return _.find(this._items, item_type ? { name, item_type } : { name })
+  exists (name, type) {
+    return _.find(this._items, type ? { name, type } : { name })
   }
 
   fn_exists (name) {
-    return this.exists(name, FN)
+    return this.exists(name, TOKENS.FN)
   }
 
   var_exists (name) {
-    return this.exists(name, VAR)
+    return this.exists(name, TOKENS.VAR)
   }
 
   class_exists (name) {
-    return this.exists(name, CLASS)
+    return this.exists(name, TOKENS.CLASS)
   }
 
 }
@@ -85,40 +77,45 @@ class Frames extends Emitter {
     this.reset()
   }
 
-  get current () { return this._current }
+  get queue () { return this._queue }
+  get current () { return _.last(this._queue) }
 
   reset () {
-    this._current = null
+    this._queue = []
   }
 
-  start (type) { this._current = new Frame(this, this._current, type) }
+  start (type, global = false) {
+    this._queue.push(new Frame(this, type, global))
+  }
 
-  end () { this._current = this._current.parent }
+  end () {
+    this._queue.pop()
+  }
 
-  add (node, parent, item_type) { return this._current.add(node, parent, item_type) }
+  add (name, type, data) {
+    return this.current.add(name, type, data)
+  }
 
-  exists (name, item_type) {
-    let c = this._current
-    while (c) {
-      let i = c.exists(name, item_type)
-      if (i) {
-        return i
+  exists (name, type) {
+    for (let i = this._queue.length - 1; i >= 0; i--) {
+      let c = this._queue[i]
+      if (c.exists(name, type)) {
+        return c
       }
-      c = c.parent
     }
-    return null
+    return undefined
   }
 
   fn_exists (name) {
-    return this.exists(name, FN)
+    return this.exists(name, TOKENS.FN)
   }
 
   class_exists (name) {
-    return this.exists(name, CLASS)
+    return this.exists(name, TOKENS.CLASS)
   }
 
   var_exists (name) {
-    return this.exists(name, VAR)
+    return this.exists(name, TOKENS.VAR)
   }
 
 }

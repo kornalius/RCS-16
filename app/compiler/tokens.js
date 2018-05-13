@@ -68,6 +68,8 @@ const END = 'END'
 const STEP = 'STEP'
 const TO = 'TO'
 
+const GLOBALS = 'GLOBALS'
+
 const WHITESPACE = 'WHITESPACE'
 const NUMBER = 'NUMBER'
 const HEXADECIMAL = 'HEXADECIMAL'
@@ -151,6 +153,20 @@ const RULES = [
 class Token {
 
   constructor (tokenizer, type, value = '', start, end, indent) {
+    if (tokenizer instanceof Token) {
+      type = tokenizer.type
+      value = tokenizer.value
+      start = tokenizer.start
+      end = tokenizer.end
+      indent = tokenizer.indent
+      tokenizer = tokenizer.tokenizer
+    }
+    if (_.isString(tokenizer)) {
+      end = start
+      start = value
+      value = type
+      type = tokenizer
+    }
     this._tokenizer = tokenizer
     this._type = type
     this._value = value
@@ -176,11 +192,11 @@ class Token {
 
   _offsetPos (offset) {
     let tokenizer = this._tokenizer
-    let line = tokenizer.lineFromOffset(offset)
+    let line = tokenizer ? tokenizer.lineFromOffset(offset) : -1
     return {
       offset: offset,
       line: line,
-      column: offset - tokenizer.lineOffsets[line],
+      column: offset - (tokenizer ? tokenizer.lineOffsets[line] : 0),
     }
   }
 
@@ -202,7 +218,7 @@ class Token {
   }
 
   toString () {
-    return _.template('{{type}} "{{value}}" at {{path}}({{line}}:{{column}})')({ type: this._type, value: this._value, line: this.start.line, column: this.start.column, path: path.basename(this._tokenizer.path) })
+    return _.template('{{type}} "{{value}}" at {{path}}({{line}}:{{column}})')({ type: this._type, value: this._value, line: this.start.line, column: this.start.column, path: this._tokenizer ? path.basename(this._tokenizer.path) : '' })
   }
 
 }
@@ -267,6 +283,7 @@ module.exports = {
   END,
   STEP,
   TO,
+  GLOBALS,
   WHITESPACE,
   NUMBER,
   HEXADECIMAL,
