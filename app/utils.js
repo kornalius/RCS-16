@@ -34,6 +34,7 @@ const math = require('mathjs')
 const is = require('is_js')
 const micromatch = require('micromatch')
 const got = require('got')
+const prettyBytes = require('pretty-bytes')
 
 require('pixi.js')
 
@@ -81,6 +82,7 @@ window.Color = Color
 window.moment = moment
 window.utoa = utoa
 window.atou = atou
+window.prettyBytes = prettyBytes
 
 const userPath = path.join(app.getPath('home'), '/.rcs-16')
 if (!fs.existsSync(userPath)) {

@@ -3,12 +3,77 @@
  */
 
 const { Emitter } = require('./mixins/common/events')
-const { Compiler, error } = require('./compiler/compiler')
 const { fs, path } = require('./utils')
+
+const acorn = require('acorn')
+const astring = require('astring')
 
 const STOPPED = 0
 const RUNNING = 1
 const PAUSED = 2
+
+const _sizeof = function _sizeof (value) {
+  let sz = 1
+  if (_.isObjectLike(value)) {
+    sz += _.ownKeys(value).length
+    for (let key in value) {
+      sz += _sizeof(value[key])
+    }
+  }
+  else if (_.isArrayLike(value)) {
+    sz += value.length
+    for (let v of value) {
+      sz += _sizeof(v)
+    }
+  }
+  else if (_.isString(value)) {
+    sz += value.length
+  }
+  else if (_.isArrayBuffer(value)) {
+    sz += value.byteLength
+  }
+  return sz
+}
+
+const _$v_ = function _$v_ (value) {
+  let sz = _sizeof(value)
+  if (sz > 10 * 1024 * 1024) {
+    RCS.main.error('memory out of bounds (size: ' + window.prettyBytes(sz) + ')', value)
+    value = undefined
+  }
+  return value
+}
+
+const _customGenerator = Object.assign({}, astring.baseGenerator, {
+  VariableDeclarator: function (node, state) {
+    this[node.id.type](node.id, state)
+    state.write(' = _$v_(')
+    this[node.init.type](node.init, state)
+    state.write(')')
+  },
+  CallExpression: function (node, state) {
+    console.log(node)
+    this[node.callee.type](node.callee, state)
+    state.write('(')
+    if (node.callee.name === 'require') {
+      state.write('_$p_.join(RCS.DIRS.user, ')
+    }
+    let last = _.last(node.arguments)
+    for (let a of node.arguments) {
+      this[a.type](a, state)
+      if (a !== last) {
+        state.write(', ')
+      }
+    }
+    if (node.callee.name === 'require') {
+      state.write(')')
+    }
+    state.write(')')
+  },
+})
+
+const _codeStart = 'const _$p_ = require(\'path\');\n\n' + _sizeof.toString() + '\n\n' + _$v_.toString() + '\n\n'
+const _codeEnd = '\n'
 
 class Main extends Emitter {
 
@@ -92,12 +157,6 @@ class Main extends Emitter {
     return this
   }
 
-  async compile (text = '', path) {
-    let compiler = new Compiler()
-    let code = await compiler.compile(text, path)
-    return code ? Function(code) : undefined
-  }
-
   async exists (path) {
     try {
       await fs.stat(path)
@@ -108,24 +167,47 @@ class Main extends Emitter {
     }
   }
 
-  async load (path) {
-    let fn = path.join(RCS.DIRS.user, path)
+  async load (_path) {
+    let fn = path.join(RCS.DIRS.user, _path)
     if (!await this.exists(fn)) {
-      fn = path.join(RCS.DIRS.cwd, path)
+      fn = path.join(RCS.DIRS.cwd, '/app', _path)
     }
-    return await fs.readFile(fn, 'utf8')
+    return fs.readFile(fn, 'utf8')
   }
 
-  error (e) {
-    if (_.isError(e)) {
-      e = e.message
+  error () {
+    let args = Array.from(arguments)
+    let f = _.first(args)
+    if (_.isError(f)) {
+      args = [f.message]
     }
-    error(e)
+    console.error(...args)
+  }
+
+  async compile (text = '', path) {
+    if (!_.isEmpty(path) && _.isEmpty(text)) {
+      text = await this.load(path, 'utf8')
+    }
+
+    let fn = new Function()
+
+    try {
+      let ast = acorn.parse(text, { ecmaVersion: 6 })
+      console.log(ast)
+      let code = _codeStart + astring.generate(ast, { indent: '  ', generator: _customGenerator }) + _codeEnd
+      console.log(code)
+      fn = new Function(code)
+    }
+    catch (e) {
+      this.error(e)
+    }
+
+    return fn
   }
 
   run (fn, ...args) {
     try {
-      return fn(args)
+      return fn(...args)
     }
     catch (e) {
       return this.error(e)
