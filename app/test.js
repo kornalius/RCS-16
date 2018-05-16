@@ -3,6 +3,7 @@
  */
 
 const { Emitter } = require('./mixins/common/events')
+const { path } = require('./utils')
 
 class Test extends Emitter {
 
@@ -27,7 +28,7 @@ class Test extends Emitter {
 
       RCS.console.draw()
 
-      RCS.main.compile(undefined, 'test.rcs')
+      RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'))
     })
   }
 

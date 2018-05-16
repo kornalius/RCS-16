@@ -111,7 +111,7 @@ class Main extends Emitter {
   async load (path) {
     let fn = path.join(RCS.DIRS.user, path)
     if (!await this.exists(fn)) {
-      fn = path.join(RCS.DIRS.cwd, path)
+      fn = path.join(RCS.DIRS.cwd, '/app', path)
     }
     return await fs.readFile(fn, 'utf8')
   }

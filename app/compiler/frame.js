@@ -7,19 +7,19 @@ const TOKENS = require('./tokens')
 
 class FrameItem extends Emitter {
 
-  constructor (frame, name, type, data) {
+  constructor (frame, name, type, value) {
     super()
 
     this._frame = frame
     this._name = name
     this._type = type
-    this._data = data
+    this._value = value
   }
 
   get frame () { return this._frame }
   get name () { return this._name }
   get type () { return this._type }
-  get data () { return this._data }
+  get value () { return this._value }
   get local () { return this._frame.local }
   get global () { return this._frame.global }
 
@@ -45,8 +45,8 @@ class Frame extends Emitter {
   get local () { return !this._global }
   get global () { return this._global }
 
-  add (name, type, data) {
-    let i = new FrameItem(this, name, type, data)
+  add (name, type, value) {
+    let i = new FrameItem(this, name, type, value)
     this._items.push(i)
     return i
   }
@@ -92,8 +92,8 @@ class Frames extends Emitter {
     this._queue.pop()
   }
 
-  add (name, type, data) {
-    return this.current.add(name, type, data)
+  add (name, type, value) {
+    return this.current.add(name, type, value)
   }
 
   exists (name, type) {
