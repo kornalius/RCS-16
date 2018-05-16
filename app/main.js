@@ -12,68 +12,58 @@ const STOPPED = 0
 const RUNNING = 1
 const PAUSED = 2
 
-const _sizeof = function _sizeof (value) {
-  let sz = 1
-  if (_.isObjectLike(value)) {
-    sz += _.ownKeys(value).length
-    for (let key in value) {
-      sz += _sizeof(value[key])
+const origRequire = window.require
+const globals = {
+  __sizeof: function (value) {
+    let sz = 1
+    if (_.isObjectLike(value)) {
+      sz += _.keys(value).length
+      for (let key in value) {
+        sz += globals.__sizeof(value[key])
+      }
     }
-  }
-  else if (_.isArrayLike(value)) {
-    sz += value.length
-    for (let v of value) {
-      sz += _sizeof(v)
+    else if (_.isArrayLike(value)) {
+      sz += value.length
+      for (let v of value) {
+        sz += globals.__sizeof(v)
+      }
     }
-  }
-  else if (_.isString(value)) {
-    sz += value.length
-  }
-  else if (_.isArrayBuffer(value)) {
-    sz += value.byteLength
-  }
-  return sz
+    else if (_.isString(value)) {
+      sz += value.length
+    }
+    else if (_.isArrayBuffer(value)) {
+      sz += value.byteLength
+    }
+    return sz
+  },
+
+  __v__: function (value) {
+    debugger
+    let sz = globals.__sizeof(value)
+    if (sz > 10 * 1024 * 1024) {
+      RCS.main.error('memory out of bounds (size: ' + window.prettyBytes(sz) + ')', value)
+      value = undefined
+    }
+    return value
+  },
+
+  require: function (p) {
+    p = path.join(RCS.DIRS.user, p)
+    console.log('require', p)
+    return origRequire(p)
+  },
+
 }
 
-const _$v_ = function _$v_ (value) {
-  let sz = _sizeof(value)
-  if (sz > 10 * 1024 * 1024) {
-    RCS.main.error('memory out of bounds (size: ' + window.prettyBytes(sz) + ')', value)
-    value = undefined
-  }
-  return value
-}
 
 const _customGenerator = Object.assign({}, astring.baseGenerator, {
   VariableDeclarator: function (node, state) {
     this[node.id.type](node.id, state)
-    state.write(' = _$v_(')
+    state.write(' = window.__v__(')
     this[node.init.type](node.init, state)
     state.write(')')
   },
-  CallExpression: function (node, state) {
-    console.log(node)
-    this[node.callee.type](node.callee, state)
-    state.write('(')
-    if (node.callee.name === 'require') {
-      state.write('_$p_.join(RCS.DIRS.user, ')
-    }
-    let last = _.last(node.arguments)
-    for (let a of node.arguments) {
-      this[a.type](a, state)
-      if (a !== last) {
-        state.write(', ')
-      }
-    }
-    if (node.callee.name === 'require') {
-      state.write(')')
-    }
-    state.write(')')
-  },
 })
-
-const _codeStart = 'const _$p_ = require(\'path\');\n\n' + _sizeof.toString() + '\n\n' + _$v_.toString() + '\n\n'
-const _codeEnd = '\n'
 
 class Main extends Emitter {
 
@@ -194,9 +184,9 @@ class Main extends Emitter {
     try {
       let ast = acorn.parse(text, { ecmaVersion: 6 })
       console.log(ast)
-      let code = _codeStart + astring.generate(ast, { indent: '  ', generator: _customGenerator }) + _codeEnd
+      let code = astring.generate(ast, { indent: '  ', generator: _customGenerator })
       console.log(code)
-      fn = new Function(code)
+      fn = new Function('window, global', 'return function () {"use strict";\n console.log(this, window, global, require, console);' + code + '}')(globals, globals)
     }
     catch (e) {
       this.error(e)

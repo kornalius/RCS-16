@@ -1,6 +1,7 @@
 console.log(...arguments)
 
 const acorn = require ('acorn')
+console.log(acorn)
 
 let a = {
   b: 10,
