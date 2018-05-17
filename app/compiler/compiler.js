@@ -7,10 +7,15 @@ const { Tokenizer } = require('./tokenizer')
 const { Node, Parser } = require('./parser')
 const { Lexer } = require('./lexer')
 
+const globals = {
+  print: function print () { console.log(...arguments) }
+}
+
 RCS.Compiler = {
   Node,
   Parser,
   Tokenizer,
+  globals,
 }
 
 const { FrameItem, Frame, Frames } = require('./frame')
@@ -36,18 +41,18 @@ class Compiler extends Emitter {
   }
 
   async transpile (nodes) {
-    let transpiler = new Transpiler(nodes)
+    let transpiler = new Transpiler()
     return transpiler.transpile(nodes)
   }
 
   async compile (text, path) {
     let tokens = await this.tokenize(text, path)
     if (tokens) {
-      console.log(tokens)
+      // console.log(tokens)
 
       let nodes = await this.parse(tokens)
       if (nodes) {
-        console.log(nodes)
+        // console.log(nodes)
 
         let code = await this.transpile(nodes)
         console.log(code)

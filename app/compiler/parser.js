@@ -9,14 +9,15 @@ class Node {
 
   constructor (token, data = {}) {
     this._token = token
-    this._data = _.extend({}, data, { fields: [], args: [] })
+    this.fields = []
+    this.args = []
+    _.extend(this, data)
     this._inClass = false
     this._fnLevel = 0
   }
 
   get inClass () { return this._inClass }
   get fnLevel () { return this._fnLevel }
-  get data () { return this._data }
 
   get token () { return this._token }
   get value () { return _.get(this._token, 'value') }
@@ -103,19 +104,21 @@ class Parser extends Emitter {
     return r
   }
 
-  match (offset, matches) {
+  match (offset, ...matches) {
     if (!_.isNumber(offset)) {
-      matches = offset
+      matches = [offset]
       offset = this._offset
     }
     let tokens = []
-    let m = 0
-    while (this.validOffset(offset) && m < matches.length) {
-      let token = this.tokenAt(offset++)
-      if (!token.is(matches[m++])) {
-        return undefined
+    for (let match of matches) {
+      let m = 0
+      while (this.validOffset(offset) && m < match.length) {
+        let token = this.tokenAt(offset++)
+        if (!token.is(match[m++])) {
+          return undefined
+        }
+        tokens.push(token)
       }
-      tokens.push(token)
     }
     return tokens.length ? tokens : undefined
   }
@@ -135,8 +138,10 @@ class Parser extends Emitter {
     this._tokens = tokens
 
     this._frames.start(TOKENS.GLOBALS, true)
-
-    this._frames.add('print', TOKENS.FN, function () { console.log(...arguments) })
+    for (let key in RCS.Compiler.globals) {
+      let v = RCS.Compiler.globals[key]
+      this._frames.add(key, _.isFunction(v) ? TOKENS.FN : TOKENS.ID, v.toString())
+    }
 
     let nodes = this.statements()
 

@@ -6,8 +6,6 @@ const { Emitter } = require('../mixins/common/events')
 const { path, fs } = require('../utils')
 const TOKENS = require('./tokens')
 
-const INDENT_AWARE = true
-
 class Tokenizer extends Emitter {
 
   constructor () {
@@ -98,7 +96,7 @@ class Tokenizer extends Emitter {
   }
 
   append (token) {
-    let c = this._constants[token.value]
+    let c = this.findConstant(token.value)
     if (c) {
       token = c
     }
@@ -126,7 +124,7 @@ class Tokenizer extends Emitter {
   }
 
   findConstant (name) {
-    return this._constants[name]
+    return this._constants.hasOwnProperty(name) ? this._constants[name] : undefined
   }
 
   peek (offset, skipComments = true, skipWhitespaces = true) {
@@ -141,14 +139,6 @@ class Tokenizer extends Emitter {
 
     let r = this._getMatchingRule(text)
     if (r) {
-      if (INDENT_AWARE && r.rule[0] === TOKENS.EOL) {
-        debugger
-        let p = this.peek(offset + r.length, skipComments, false)
-        if (p && p.token.is(TOKENS.WHITESPACE)) {
-          indent = p.token.length
-        }
-      }
-
       let skip = skipComments && r.rule[0] === TOKENS.COMMENT || skipWhitespaces && r.rule[0] === TOKENS.WHITESPACE
 
       let o = offset
@@ -199,9 +189,6 @@ class Tokenizer extends Emitter {
             return this.length
           }
           token = p.token
-          if (!token || token.is(TOKENS.EOL)) {
-            break
-          }
           c.push(token)
           offset = p.offset
         }
@@ -219,10 +206,6 @@ class Tokenizer extends Emitter {
       }
 
       else {
-        let c = this.findConstant(token.value)
-        if (c) {
-          token = c
-        }
         this.append(token)
       }
     }

@@ -23,9 +23,13 @@ class FrameItem extends Emitter {
   get local () { return this._frame.local }
   get global () { return this._frame.global }
 
-  get isVar () { return this._type === TOKENS.VAR }
-  get isClass () { return this._type === TOKENS.CLASS }
-  get isFn () { return this._type === TOKENS.FN }
+  is (type) {
+    return this._type === type || this._name === type
+  }
+
+  get isVar () { return this.is(TOKENS.VAR) }
+  get isClass () { return this.is(TOKENS.CLASS) }
+  get isFn () { return this.is(TOKENS.FN) }
 
 }
 
@@ -96,11 +100,16 @@ class Frames extends Emitter {
     return this.current.add(name, type, value)
   }
 
+  find (name) {
+    return _.find(this._queue, { name })
+  }
+
   exists (name, type) {
     for (let i = this._queue.length - 1; i >= 0; i--) {
       let c = this._queue[i]
-      if (c.exists(name, type)) {
-        return c
+      let fi = c.exists(name, type)
+      if (fi) {
+        return fi
       }
     }
     return undefined

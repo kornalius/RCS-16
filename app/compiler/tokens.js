@@ -57,6 +57,7 @@ const WHILE = 'WHILE'
 const FOR = 'FOR'
 const LET = 'LET'
 const CLASS = 'CLASS'
+const EXTENDS = 'EXTENDS'
 const NEW = 'NEW'
 const SUPER = 'SUPER'
 const RETURN = 'RETURN'
@@ -92,26 +93,27 @@ const MATH = [PLUS, MINUS, MULTIPLY, DIVIDE, MODULUS]
 const LOGIC = [AND, OR, XOR, NOT]
 
 const RULES = [
-  [WHITESPACE, new RegExp('^[' + SPACE + TAB + ']+')],
-
   [EOL, new RegExp('^[' + CR + LF + ']|' + SEMI_COLON)],
+
+  [WHITESPACE, new RegExp('^[' + SPACE + TAB + ']+')],
 
   [COMMENT, new RegExp('^\\' + DIVIDE + '\\' + DIVIDE + '([^' + CR + LF + ']*)')],
 
   [COMMA, new RegExp('^' + COMMA)],
-  [COLON, new RegExp('^' + COLON)],
 
   [NUMBER, new RegExp('^(' + MINUS_PLUS + '?' + NUM + '*\\.?' + NUM + '+([eE]' + MINUS_PLUS + '?' + NUM + '+)?)')],
   [HEXADECIMAL, new RegExp('^0x(' + HEXA + '+)', 'i')],
 
-  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, NEW, SUPER, END, STEP, TO].join('|') + ')' + SPACE + '+', 'i')],
+  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, EXTENDS, NEW, SUPER, END, STEP, TO].join('|') + ')' + SPACE + '+', 'i')],
 
   [STRING, new RegExp('^' + DOUBLE_QUOTE + '([^' + DOUBLE_QUOTE + ']*)' + DOUBLE_QUOTE)],
   [CHAR, new RegExp('^' + QUOTE + '(.)' + QUOTE)],
 
   [INCLUDE, new RegExp('^' + HASH + DOUBLE_QUOTE + '([^' + DOUBLE_QUOTE + ']*)' + DOUBLE_QUOTE)],
 
-  [KEY, new RegExp('^' + COLON + '(' + ALPHA + ALPHA_NUM + '*)', 'i')],
+  [KEY, new RegExp('^(' + ALPHA + ALPHA_NUM + '*)' + COLON, 'i')],
+
+  [COLON, new RegExp('^' + COLON)],
 
   [ID, new RegExp('^(' + ALPHA + ALPHA_NUM + '*)', 'i')],
   [ID_FIELD, new RegExp('^\\.(' + ALPHA + ALPHA_NUM + '*)', 'i')],
@@ -273,6 +275,7 @@ module.exports = {
   FOR,
   LET,
   CLASS,
+  EXTENDS,
   NEW,
   SUPER,
   RETURN,

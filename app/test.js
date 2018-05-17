@@ -9,7 +9,7 @@ class Test extends Emitter {
 
   start () {
     let font = new RCS.Font('tiny')
-    font.on('loaded', () => {
+    font.on('loaded', async () => {
       RCS.console = new RCS.TTY(font)
 
       RCS.console.println('Welcome to RCS-16', 45)
@@ -28,7 +28,8 @@ class Test extends Emitter {
 
       RCS.console.draw()
 
-      RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'))
+      let fn = await RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'))
+      fn()
     })
   }
 
