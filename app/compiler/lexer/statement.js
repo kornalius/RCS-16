@@ -3,7 +3,6 @@
  */
 
 const { Node } = require('./node')
-const { Token } = require('../tokens/token')
 const TOKENS = require('../tokens/tokens')
 const { Parser } = require('./parser')
 
