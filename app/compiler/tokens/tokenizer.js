@@ -2,8 +2,9 @@
  * @module compiler
  */
 
-const { Emitter } = require('../mixins/common/events')
-const { path, fs } = require('../utils')
+const { Emitter } = require('../../mixins/common/events')
+const { path, fs } = require('../../utils')
+const { Token } = require('./token')
 const TOKENS = require('./tokens')
 
 class Tokenizer extends Emitter {
@@ -146,7 +147,7 @@ class Tokenizer extends Emitter {
       offset += len
 
       if (!skip) {
-        token = new TOKENS.Token(this, r.rule[0], r.value, o, offset, indent)
+        token = new Token(this, r.rule[0], r.value, o, offset, indent)
       }
       else {
         let p = this.peek(offset, skipComments, skipWhitespaces)

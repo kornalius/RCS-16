@@ -2,40 +2,8 @@
  * @module compiler
  */
 
-const { Emitter } = require('../mixins/common/events')
-const TOKENS = require('./tokens')
-
-class Node {
-
-  constructor (token, data = {}) {
-    this._token = token
-    this.fields = []
-    this.args = []
-    _.extend(this, data)
-    this._inClass = false
-    this._fnLevel = 0
-  }
-
-  get inClass () { return this._inClass }
-  get fnLevel () { return this._fnLevel }
-
-  get token () { return this._token }
-  get value () { return _.get(this._token, 'value') }
-  get type () { return _.get(this._token, 'type') }
-  get start () { return _.get(this._token, 'start', 0) }
-  get end () { return _.get(this._token, 'end', this.length) }
-  get length () { return _.get(this._token, 'length', 0) }
-
-  is (e) {
-    return this._token ? this._token.is(e) : false
-  }
-
-  toString () {
-    return this._token ? this._token.toString() : ''
-  }
-
-}
-
+const { Emitter } = require('../../mixins/common/events')
+const TOKENS = require('../tokens/tokens')
 
 class Parser extends Emitter {
 
@@ -54,6 +22,7 @@ class Parser extends Emitter {
   get fnLevel () { return this._fnLevel }
 
   get tokens () { return this._tokens }
+  get states () { return this._states }
   get length () { return this._tokens.length }
   get eos () { return this._offset >= this.length }
   get token () { return this.tokenAt(this._offset) }
@@ -67,6 +36,31 @@ class Parser extends Emitter {
     this._prevFrame = undefined
     this._inClass = false
     this._fnLevel = 0
+    this._states = []
+  }
+
+  pushState () {
+    let state = {
+      errors: this._errors,
+      offset: this._offset,
+      nodes: _.clone(this._nodes),
+      framesQueue: _.clone(this._frames.queue),
+      prevFrameId: this._prevFrame ? this._prevFrame.id : undefined,
+      inClass: this._inClass,
+      fnLevel: this._fnLevel,
+    }
+    this._states.push(state)
+  }
+
+  popState () {
+    let state = this._states.pop()
+    this._errors = state.errors
+    this._offset = state.offset
+    this._nodes = state.nodes
+    this._frames._queue = state.framesQueue
+    this._prevFrame = state.prevFrameId ? _.find(this._frames.queue, { id: state.prevFrameId }) : undefined
+    this._inClass = state.inClass
+    this._fnLevel = state.fnLev_fnLevel
   }
 
   validOffset (offset) {
@@ -91,36 +85,31 @@ class Parser extends Emitter {
   }
 
   expect (e, next = true) {
-    let r = this.is(e)
-    if (!r) {
-      if (_.isArray(e)) {
-        e = e.join(' or ')
-      }
-      this.error(e, 'expected')
-    }
-    else if (next) {
+    let r = this.token.expect(e)
+    if (r && next) {
       this.next()
     }
     return r
   }
 
-  match (offset, ...matches) {
-    if (!_.isNumber(offset)) {
-      matches = [offset]
-      offset = this._offset
-    }
+  match (...matches) {
+    let offset = this.offset
     let tokens = []
     for (let match of matches) {
-      let m = 0
-      while (this.validOffset(offset) && m < match.length) {
-        let token = this.tokenAt(offset++)
-        if (!token.is(match[m++])) {
-          return undefined
+      if (this.validOffset(offset)) {
+        let token = this.tokenAt(offset)
+        if (_.isFunction(match)) {
+          let c = match.call(this, offset)
+          offset = c.offset
+          tokens.push(c.tokens)
         }
-        tokens.push(token)
+        else if (token.is(match)) {
+          offset++
+          tokens.push(token)
+        }
       }
     }
-    return tokens.length ? tokens : undefined
+    return tokens.length === matches.length ? tokens : undefined
   }
 
   peek (c = 1) {
@@ -161,6 +150,5 @@ class Parser extends Emitter {
 }
 
 module.exports = {
-  Node,
   Parser,
 }

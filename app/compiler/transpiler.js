@@ -3,8 +3,8 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const { Node } = require('./parser')
-const TOKENS = require('./tokens')
+const { Node } = require('./lexer/node')
+const TOKENS = require('./tokens/tokens')
 
 class Transpiler extends Emitter {
 
@@ -108,8 +108,8 @@ class Transpiler extends Emitter {
         expr = this.expr(node.expr)
       }
       else if (node.is(TOKENS.FN_ASSIGN)) {
-        op = !node._in_class || node._fn_level > 0 ? ' = ' : ' '
-        expr = this.fn_def(node.args, node.body, node._in_class && node._fn_level === 0)
+        op = !node._inClass || node._fnLevel > 0 ? ' = ' : ' '
+        expr = this.fn_def(node.args, node.body, node._inClass && node._fnLevel === 0)
       }
 
       t = {
@@ -231,6 +231,15 @@ class Transpiler extends Emitter {
             name: node.id.value,
             _extends: node._extends ? ' extends ' + this.expr(node._extends, ', ') : '',
             body: this.block(node.body),
+          }
+        }
+      }
+      else if (node.is(TOKENS.NEW)) {
+        t = {
+          tmpl: 'new {{id}}({{args}})',
+          data: {
+            id: node.id.value,
+            args: !_.isEmpty(node.args) ? this.expr(node.args, ', ') : '',
           }
         }
       }

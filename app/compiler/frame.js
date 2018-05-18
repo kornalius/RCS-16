@@ -3,7 +3,7 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const TOKENS = require('./tokens')
+const TOKENS = require('./tokens/tokens')
 
 class FrameItem extends Emitter {
 
@@ -38,12 +38,14 @@ class Frame extends Emitter {
   constructor (frames, type, global = false) {
     super()
 
+    this._id = _.uuid()
     this._frames = frames
     this._type = type
     this._global = global
     this._items = []
   }
 
+  get id () { return this._id }
   get type () { return this._type }
   get items () { return this._items }
   get local () { return !this._global }

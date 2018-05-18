@@ -3,9 +3,9 @@
  */
 
 const { Emitter } = require('../mixins/common/events')
-const { Tokenizer } = require('./tokenizer')
-const { Node, Parser } = require('./parser')
-const { Lexer } = require('./lexer')
+const { Tokenizer } = require('./tokens/tokenizer')
+const { Node } = require('./lexer/node')
+const { Lexer } = require('./lexer/lexer')
 
 const globals = {
   print: function print () { console.log(...arguments) }
@@ -13,7 +13,7 @@ const globals = {
 
 RCS.Compiler = {
   Node,
-  Parser,
+  Lexer,
   Tokenizer,
   globals,
 }

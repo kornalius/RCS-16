@@ -1,3 +1,12 @@
+class MYCLASS
+  constructor =>
+    let f (a, b) =>
+      print a b
+    end
+    f 555 666
+  end
+end
+
 let a  =   100
 
 let test =>
@@ -14,9 +23,5 @@ else
   print a
 end
 
-class MYCLASS
-  constructor =>
-  end
-end
-
 print test.a[1][0]
+new MYCLASS
