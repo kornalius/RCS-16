@@ -57,7 +57,7 @@ class Token {
 
   is (e) {
     if (_.isString(e)) {
-      return this._type === e || this.type === e || this._value === e
+      return this._type === e || this.type === e || (this._type === TOKENS.ID && this._value === e)
     }
     else if (_.isArray(e)) {
       for (let i of e) {
@@ -73,17 +73,6 @@ class Token {
       return e.call(this)
     }
     return false
-  }
-
-  expect (e) {
-    let r = this.is(e)
-    if (!r) {
-      if (_.isArray(e)) {
-        e = e.join(' or ')
-      }
-      this.error(e, 'expected')
-    }
-    return r
   }
 
   toString () {

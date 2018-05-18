@@ -31,11 +31,19 @@ class Statement extends Parser {
   }
 
   statement () {
-    if (this.match([TOKENS.LET], [TOKENS.ID], this.isArguments, [TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) { // variable assignment
-      return this.assign_statement()
+    if (this.match([TOKENS.LET], [TOKENS.ID], TOKENS.ASSIGN)) { // variable assignment
+      this.next() // skip LET keyword
+      return this.var_assign(true)
     }
-    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], this.isArguments, [TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) { // variable assignment
-      return this.assign_statement()
+    else if (this.match([TOKENS.LET], [TOKENS.ID], this.isArguments, TOKENS.FN_ASSIGN)) { // function assignment
+      this.next() // skip LET keyword
+      return this.fn_assign(true, true)
+    }
+    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], TOKENS.ASSIGN)) { // variable assignment
+      return this.var_assign()
+    }
+    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], this.isArguments, [TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) { // function assignment
+      return this.fn_assign(false, true)
     }
     else if (this.is(TOKENS.IF)) { // if block
       return this.if_statement()
@@ -77,37 +85,23 @@ class Statement extends Parser {
     }
   }
 
-  assign_statement () {
+  var_assign (_let = false) {
     let id = this.token
-
-    let t = new Token(this.token)
-    t._value = '='
-    t._type = TOKENS.ASSIGN
-    let node = new Node(t, { id })
 
     this.next()
 
-    if (this.is(TOKENS.OPEN_PAREN)) {
-      t._type = TOKENS.FN_ASSIGN
-      this.next()
-      if (!this.is(TOKENS.CLOSE_PAREN)) {
-        node.args = this.exprs(TOKENS.CLOSE_PAREN)
-      }
-      this.expect(TOKENS.CLOSE_PAREN)
-      this.expect(TOKENS.FN_ASSIGN)
-    }
+    let node = new Node(this.token, { id })
 
-    if (this.is(TOKENS.FN_ASSIGN)) {
-      node = this.fn_assign(id, true)
-      id._fn = true
-    }
-    else {
-      node = new Node(this.token, { id })
-      this.next()
-      node.expr = this.expr()
-    }
+    this.next()
 
-    this._frames.add(id.value, id._fn ? TOKENS.FN : TOKENS.VAR)
+    this._classFrame = undefined
+    node.expr = this.expr()
+
+    node._let = _let
+
+    if (_let) {
+      this._frames.add(id.value, TOKENS.VAR, this._classFrame)
+    }
 
     return node
   }

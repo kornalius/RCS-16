@@ -120,9 +120,9 @@ class Transpiler extends Emitter {
     return t
   }
 
-  fn_def (args, body, in_class = false) {
+  fn_def (args, body, inClass = false) {
     return _.template('{{fn}}({{args}}) {{body}}')({
-      fn: !in_class ? 'function ' : '',
+      fn: !inClass ? 'function ' : '',
       args: this.expr(args, ', '),
       body: this.block(body),
     })

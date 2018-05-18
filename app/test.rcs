@@ -5,23 +5,30 @@ class MYCLASS
     end
     f 555 666
   end
+
+  test (arg) =>
+    print arg
+  end
+
 end
 
 let a  =   100
+a = 20
 
 let test =>
   return
-    a: [10 [20 40] 30]
+    a: [10 [20, 40] 30]
     b: 10
 end
 
-if a > 10
-  print a
-else if a < 10
-  print a
+if a > 100
+  print ">" a
+else if a < 100
+  print "<" a
 else
-  print a
+  print "=" a
 end
 
 print test.a[1][0]
-new MYCLASS
+let o = new MYCLASS
+o.test(10)

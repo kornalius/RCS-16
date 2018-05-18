@@ -14,6 +14,8 @@ class FrameItem extends Emitter {
     this._name = name
     this._type = type
     this._value = value
+
+    console.log(this._name, this._type, this._value)
   }
 
   get frame () { return this._frame }
@@ -35,10 +37,11 @@ class FrameItem extends Emitter {
 
 class Frame extends Emitter {
 
-  constructor (frames, type, global = false) {
+  constructor (frames, name, type, global = false) {
     super()
 
     this._id = _.uuid()
+    this._name = name
     this._frames = frames
     this._type = type
     this._global = global
@@ -46,6 +49,7 @@ class Frame extends Emitter {
   }
 
   get id () { return this._id }
+  get name () { return this._name }
   get type () { return this._type }
   get items () { return this._items }
   get local () { return !this._global }
@@ -59,18 +63,6 @@ class Frame extends Emitter {
 
   exists (name, type) {
     return _.find(this._items, type ? { name, type } : { name })
-  }
-
-  fn_exists (name) {
-    return this.exists(name, TOKENS.FN)
-  }
-
-  var_exists (name) {
-    return this.exists(name, TOKENS.VAR)
-  }
-
-  class_exists (name) {
-    return this.exists(name, TOKENS.CLASS)
   }
 
 }
@@ -90,8 +82,8 @@ class Frames extends Emitter {
     this._queue = []
   }
 
-  start (type, global = false) {
-    this._queue.push(new Frame(this, type, global))
+  start (name, type, global = false) {
+    this._queue.push(new Frame(this, name, type, global))
   }
 
   end () {
@@ -115,18 +107,6 @@ class Frames extends Emitter {
       }
     }
     return undefined
-  }
-
-  fn_exists (name) {
-    return this.exists(name, TOKENS.FN)
-  }
-
-  class_exists (name) {
-    return this.exists(name, TOKENS.CLASS)
-  }
-
-  var_exists (name) {
-    return this.exists(name, TOKENS.VAR)
   }
 
 }

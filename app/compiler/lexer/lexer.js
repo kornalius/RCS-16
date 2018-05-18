@@ -41,7 +41,7 @@ class Lexer extends Expression {
 
   block (end, end_next = true, block_type) {
     if (block_type) {
-      this._frames.start(block_type)
+      this._frames.start('', block_type)
     }
     let nodes = this.loop_while(this.statement, undefined, end, end_next, TOKENS.EOL)
     if (block_type) {

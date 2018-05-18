@@ -41,7 +41,7 @@ class Expression extends Statement {
       return this.next_expr_node()
     }
     else if (this.is(TOKENS.FN_ASSIGN)) {
-      return this.fn_assign()
+      return this.fn_assign(false)
     }
     else if (this.is(TOKENS.OPEN_PAREN)) {
       return this.sub_expr()
@@ -136,10 +136,14 @@ class Expression extends Statement {
     this.next()
     let id = this.token
     this.next()
-    if (!this._frames.exists(id.value, TOKENS.CLASS)) {
+    let f = this._frames.exists(id.value, TOKENS.CLASS)
+    if (!f) {
       this.error(id, 'undeclared class')
       return undefined
     }
+
+    this._classFrame = f
+
     let args = []
     if (this.is(TOKENS.OPEN_PAREN)) {
       this.next()
@@ -207,6 +211,13 @@ class Expression extends Statement {
   }
 
   id_expr () {
+    if (this._inArgs) {
+      let node = new Node(this.token)
+      this._frames.add(this.token.value, TOKENS.VAR)
+      this.next()
+      return node
+    }
+
     let i = this._frames.exists(this.token.value)
     if (!i) {
       this.error('undeclared identifier')
@@ -219,7 +230,6 @@ class Expression extends Statement {
     }
 
     let node = new Node(this.token)
-
     this.next()
 
     while (this.is([TOKENS.ID_FIELD, TOKENS.OPEN_BRACKET])) {
@@ -286,14 +296,26 @@ class Expression extends Statement {
     return node
   }
 
-  fn_assign (id, statement = false) {
+  fn_assign (_let = false, statement = false) {
+    let id
+
+    if (statement) {
+      id = this.token
+      this.next()
+    }
+
     let node = new Node(this.token, { id })
+
     if (statement) {
       node._inClass = this._inClass
       node._fnLevel = this._fnLevel++
+      this._frames.add(id.value, TOKENS.FN)
     }
-    this.next()
-    this._frames.start(TOKENS.FN)
+
+    node._let = _let
+
+    this._frames.start(id.value, TOKENS.FN)
+
     if (this.is(TOKENS.OPEN_PAREN)) {
       this.next()
       if (!this.is(TOKENS.CLOSE_PAREN)) {
@@ -301,59 +323,23 @@ class Expression extends Statement {
       }
       this.expect(TOKENS.CLOSE_PAREN)
     }
+
+    if (this.is(TOKENS.FN_ASSIGN)) {
+      this.next()
+    }
+
     node.body = this.block(TOKENS.END, false)
+    node._token._type = TOKENS.FN_ASSIGN
+
     this._frames.end()
+
     this.expect(TOKENS.END)
+
     if (statement) {
       this._fnLevel--
     }
+
     return node
-  }
-
-}
-
-class Lexer extends Expression {
-
-  loop_while (fn, matches, end, end_next, skip) {
-    let nodes = []
-    if (skip) {
-      this.skip(skip)
-    }
-    while (!this.eos && (!end || !this.is(end)) && (!matches || this.match(matches))) {
-      nodes.push(fn.call(this))
-      if (skip) {
-        this.skip(skip)
-      }
-    }
-    if (end) {
-      this.expect(end, end_next)
-    }
-    return nodes
-  }
-
-  next_expr_node (left) {
-    let token = this.token
-    let data = {}
-    if (left) {
-      this.next()
-      data = { left, right: this.expr() }
-    }
-    let node = new Node(token, data)
-    if (!left) {
-      this.next()
-    }
-    return node
-  }
-
-  block (end, end_next = true, block_type) {
-    if (block_type) {
-      this._frames.start(block_type)
-    }
-    let nodes = this.loop_while(this.statement, undefined, end, end_next, TOKENS.EOL)
-    if (block_type) {
-      this._frames.end()
-    }
-    return nodes
   }
 
 }

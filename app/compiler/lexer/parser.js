@@ -19,6 +19,7 @@ class Parser extends Emitter {
   get frames () { return this._frames }
   get prevFrame () { return this._prevFrame }
   get inClass () { return this._inClass }
+  get inArgs () { return this._inArgs }
   get fnLevel () { return this._fnLevel }
 
   get tokens () { return this._tokens }
@@ -30,11 +31,13 @@ class Parser extends Emitter {
   reset () {
     this._errors = 0
     this._offset = 0
+    this._matching = 0
     this._tokens = []
     this._nodes = []
     this._frames = new RCS.Compiler.Frames()
     this._prevFrame = undefined
     this._inClass = false
+    this._inArgs = false
     this._fnLevel = 0
     this._states = []
   }
@@ -43,10 +46,12 @@ class Parser extends Emitter {
     let state = {
       errors: this._errors,
       offset: this._offset,
+      matching: this._matching,
       nodes: _.clone(this._nodes),
       framesQueue: _.clone(this._frames.queue),
       prevFrameId: this._prevFrame ? this._prevFrame.id : undefined,
       inClass: this._inClass,
+      inArgs: this._inArgs,
       fnLevel: this._fnLevel,
     }
     this._states.push(state)
@@ -56,11 +61,13 @@ class Parser extends Emitter {
     let state = this._states.pop()
     this._errors = state.errors
     this._offset = state.offset
+    this._matching = state.matching
     this._nodes = state.nodes
     this._frames._queue = state.framesQueue
     this._prevFrame = state.prevFrameId ? _.find(this._frames.queue, { id: state.prevFrameId }) : undefined
     this._inClass = state.inClass
-    this._fnLevel = state.fnLev_fnLevel
+    this._inArgs = state.inArgs
+    this._fnLevel = state.fnLevel
   }
 
   validOffset (offset) {
@@ -80,12 +87,20 @@ class Parser extends Emitter {
   }
 
   error () {
-    this._errors++
-    console.error(..._.concat(Array.from(arguments), this.token ? [this.token.toString()] : []))
+    if (!this._matching) {
+      this._errors++
+      console.error(..._.concat(Array.from(arguments), this.token ? [this.token.toString()] : []))
+    }
   }
 
   expect (e, next = true) {
-    let r = this.token.expect(e)
+    let r = this.is(e)
+    if (!r) {
+      if (_.isArray(e)) {
+        e = e.join(' or ')
+      }
+      this.error(e, 'expected')
+    }
     if (r && next) {
       this.next()
     }
@@ -93,6 +108,7 @@ class Parser extends Emitter {
   }
 
   match (...matches) {
+    this._matching = true
     let offset = this.offset
     let tokens = []
     for (let match of matches) {
@@ -109,6 +125,7 @@ class Parser extends Emitter {
         }
       }
     }
+    this._matching = false
     return tokens.length === matches.length ? tokens : undefined
   }
 
@@ -126,7 +143,7 @@ class Parser extends Emitter {
 
     this._tokens = tokens
 
-    this._frames.start(TOKENS.GLOBALS, true)
+    this._frames.start('PROGRAM', TOKENS.GLOBALS, true)
     for (let key in RCS.Compiler.globals) {
       let v = RCS.Compiler.globals[key]
       this._frames.add(key, _.isFunction(v) ? TOKENS.FN : TOKENS.ID, v.toString())
