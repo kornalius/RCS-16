@@ -117,7 +117,7 @@ class Expression extends Statement {
       return this.next_expr_node()
     }
     else if (this.is(TOKENS.THIS_FIELD)) {
-      return this.id_expr(false)
+      return this.id_expr()
     }
     return undefined
   }
@@ -128,7 +128,7 @@ class Expression extends Statement {
       this.next()
       return undefined
     }
-    return this.id_expr(false)
+    return this.id_expr()
   }
 
   new_expr () {
@@ -192,19 +192,18 @@ class Expression extends Statement {
     let node = new Node(this.token)
     node.token._type = TOKENS.ID
     node._field = true
-
     this.next()
 
     if (this.is(TOKENS.OPEN_BRACKET)) {
       node.fields.push(this.array_expr())
     }
     else if (this.is(TOKENS.OPEN_PAREN)) {
-      this.next()
-      node.token._type = TOKENS.FN
-      if (!this.is(TOKENS.CLOSE_PAREN)) {
-        node.fields.push(this.fn_call())
-      }
-      this.expect(TOKENS.CLOSE_PAREN)
+      this.prev()
+      node = this.fn_call()
+      node._field = true
+    }
+    else if (this.is(TOKENS.ID_FIELD)) {
+      node.fields.push(this.id_field())
     }
 
     return node
@@ -225,16 +224,23 @@ class Expression extends Statement {
       return undefined
     }
 
+    let node
+
     if (i.is(TOKENS.FN)) {
-      return this.fn_call()
+      node = this.fn_call()
+    }
+    else {
+      node = new Node(this.token)
+      this.next()
     }
 
-    let node = new Node(this.token)
-    this.next()
-
-    while (this.is([TOKENS.ID_FIELD, TOKENS.OPEN_BRACKET])) {
+    while (this.is([TOKENS.ID_FIELD, TOKENS.OPEN_BRACKET, TOKENS.OPEN_PAREN])) {
       if (this.is(TOKENS.OPEN_BRACKET)) {
         node.fields.push(this.array_expr())
+      }
+      else if (this.is(TOKENS.OPEN_PAREN)) {
+        this.prev()
+        node.fields.push(this.fn_call())
       }
       else {
         node.fields.push(this.id_field())

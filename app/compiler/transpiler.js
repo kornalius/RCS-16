@@ -132,10 +132,11 @@ class Transpiler extends Emitter {
     let t = {}
     if (node) {
       t = {
-        tmpl: '{{field}}{{fn}}({{args}}){{suffix}}',
+        tmpl: '{{field}}{{fn}}{{fields}}({{args}}){{suffix}}',
         data: {
           field: node._field ? '.' : '',
           fn: node.value,
+          fields: !_.isEmpty(node.fields) ? this.expr(node.fields, '') : '',
           args: !_.isEmpty(node.args) ? this.expr(node.args, ', ') : '',
           suffix: !_.isEmpty(node.suffix) ? this.expr(node.suffix, '') : '',
         }
@@ -240,6 +241,16 @@ class Transpiler extends Emitter {
           data: {
             id: node.id.value,
             args: !_.isEmpty(node.args) ? this.expr(node.args, ', ') : '',
+          }
+        }
+      }
+      else if (node.is(TOKENS.ID)) {
+        t = {
+          tmpl: '{{value}}{{fields}}{{assign}}',
+          data: {
+            value: node.value,
+            fields: !_.isEmpty(node.fields) ? this.expr(node.fields, '') : '',
+            assign: node.assign ? ' = ' + this.expr(node.assign, '') : '',
           }
         }
       }
@@ -353,10 +364,9 @@ class Transpiler extends Emitter {
         }
         else if (node.is(TOKENS.ID)) {
           t = {
-            tmpl: '{{field}}{{public}}{{value}}{{fields}}{{assign}}',
+            tmpl: '{{field}}{{value}}{{fields}}{{assign}}',
             data: {
               field: node._field ? '.' : '',
-              public: node._rom ? '_vm.rom.' : '',
               value: node.value,
               fields: !_.isEmpty(node.fields) ? this.expr(node.fields, '') : '',
               assign: node.assign ? ' = ' + this.expr(node.assign, '') : '',

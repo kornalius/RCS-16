@@ -75,12 +75,12 @@ class Statement extends Parser {
     return undefined
   }
 
-  id_statement (first = true) {
+  id_statement () {
     if (this.is(TOKENS.SUPER)) {
       return this.super_expr()
     }
     else {
-      return this.id_expr(first)
+      return this.id_expr()
     }
   }
 

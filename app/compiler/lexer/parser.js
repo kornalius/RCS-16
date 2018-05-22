@@ -133,6 +133,11 @@ class Parser extends Emitter {
     return this.tokenAt(this._offset + c)
   }
 
+  prev (c = 1) {
+    this._offset -= c
+    return this.tokenAt(this._offset)
+  }
+
   next (c = 1) {
     this._offset += c
     return this.tokenAt(this._offset)
