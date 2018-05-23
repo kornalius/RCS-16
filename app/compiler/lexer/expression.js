@@ -159,7 +159,7 @@ class Expression extends Statement {
     let node = new Node(this.token)
     this.expect(TOKENS.OPEN_BRACKET)
     if (!this.is(TOKENS.CLOSE_BRACKET)) {
-      node.args = this.loop_while(this.expr, undefined, TOKENS.CLOSE_BRACKET, false, [TOKENS.COMMA, TOKENS.EOL])
+      node.args = this.loop_while(this.expr, undefined, TOKENS.CLOSE_BRACKET, false, [TOKENS.COMMA, TOKENS.EOL, TOKENS.INDENT])
     }
     this.expect(TOKENS.CLOSE_BRACKET)
     return node
@@ -169,19 +169,19 @@ class Expression extends Statement {
     let node = new Node(this.token)
     node.def = []
     if (this.is(TOKENS.KEY)) {
-      node.def = this.loop_while(this.key_literal, [TOKENS.KEY], undefined, false, [TOKENS.COMMA, TOKENS.EOL])
+      node.def = this.loop_while(this.key_expr, [TOKENS.KEY], undefined, false, [TOKENS.COMMA, TOKENS.EOL, TOKENS.INDENT])
     }
     else {
       this.expect(TOKENS.OPEN_CURLY)
       if (!this.is(TOKENS.CLOSE_CURLY)) {
-        node.def = this.loop_while(this.key_literal, [TOKENS.KEY], TOKENS.CLOSE_CURLY, false, [TOKENS.COMMA, TOKENS.EOL])
+        node.def = this.loop_while(this.key_expr, [TOKENS.KEY], TOKENS.CLOSE_CURLY, false, [TOKENS.COMMA, TOKENS.EOL, TOKENS.INDENT])
       }
       this.expect(TOKENS.CLOSE_CURLY)
     }
     return node
   }
 
-  key_literal () {
+  key_expr () {
     let node = new Node(this.token)
     this.expect(TOKENS.KEY)
     node.expr = this.expr()
@@ -262,7 +262,7 @@ class Expression extends Statement {
   }
 
   fn_args_def () {
-    return this.loop_while(this.fn_arg, [TOKENS.ID], TOKENS.CLOSE_PAREN, false, [TOKENS.COMMA, TOKENS.EOL])
+    return this.loop_while(this.fn_arg, [TOKENS.ID], TOKENS.CLOSE_PAREN, false, [TOKENS.COMMA, TOKENS.EOL, TOKENS.INDENT])
   }
 
   fn_call () {

@@ -6,6 +6,8 @@ const { Emitter } = require('./mixins/common/events')
 const { Compiler, error } = require('./compiler/compiler')
 const { fs } = require('./utils')
 
+const _VIDEO_ = 0
+
 const STOPPED = 0
 const RUNNING = 1
 const PAUSED = 2
@@ -129,13 +131,15 @@ class Main extends Emitter {
     if (this.state === RUNNING) {
       let t = performance.now()
 
-      RCS.mouse.tick(t, delta)
-      RCS.keyboard.tick(t, delta)
-      RCS.palette.tick(t, delta)
-      RCS.sprite.tick(t, delta)
-      RCS.overlays.tick(t, delta)
-      RCS.video.tick(t, delta)
-      RCS.sound.tick(t, delta)
+      if (_VIDEO_) {
+        RCS.mouse.tick(t, delta)
+        RCS.keyboard.tick(t, delta)
+        RCS.palette.tick(t, delta)
+        RCS.sprite.tick(t, delta)
+        RCS.overlays.tick(t, delta)
+        RCS.video.tick(t, delta)
+        RCS.sound.tick(t, delta)
+      }
 
       RCS.memoryManager.tick(t, delta)
     }
@@ -145,13 +149,16 @@ class Main extends Emitter {
     require('./classes/api/index')
 
     await RCS.memoryManager.boot()
-    await RCS.video.boot()
-    await RCS.sprite.boot()
-    await RCS.palette.boot()
-    await RCS.mouse.boot()
-    await RCS.keyboard.boot()
-    await RCS.overlays.boot()
-    await RCS.sound.boot()
+
+    if (_VIDEO_) {
+      await RCS.video.boot()
+      await RCS.sprite.boot()
+      await RCS.palette.boot()
+      await RCS.mouse.boot()
+      await RCS.keyboard.boot()
+      await RCS.overlays.boot()
+      await RCS.sound.boot()
+    }
   }
 
 }

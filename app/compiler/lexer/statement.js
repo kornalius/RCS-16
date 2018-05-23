@@ -177,7 +177,7 @@ class Statement extends Parser {
 
   return_statement () {
     let p = false
-    let end = [TOKENS.EOL, TOKENS.END, TOKENS.CLOSE_PAREN]
+    let end = [TOKENS.END]
     let node = new Node(this.token)
     this.next()
     if (this.is(TOKENS.OPEN_PAREN)) {

@@ -296,14 +296,17 @@ class Tokenizer extends Emitter {
       let needsEnd = {}
       let needsIndentLevel = false
       let newTokens = []
+      let queued = []
       let tokens = this._tokens
       let lineIndents = this._lineIndents
 
       const addEnds = (level, indents, token) => {
+        let start = token ? token.start : this.length
+        let end = token ? token.end : this.length
         while (level >= indents) {
           while (needsEnd[level] > 0) {
-            newTokens.push(new Token(this, TOKENS.END, 'end', token ? token.start : this.length, token ? token.end : this.length))
-            newTokens.push(new Token(this, TOKENS.EOL, '\n', token ? token.start : this.length, token ? token.end : this.length))
+            queued.unshift(new Token(this, TOKENS.EOL, '\n', start, end))
+            queued.unshift(new Token(this, TOKENS.END, 'end', start, end))
             needsEnd[level]--
             console.log(indents, level, needsEnd[level], _.padStart('end', level * 2 + 3, ' '))
           }
@@ -313,12 +316,16 @@ class Tokenizer extends Emitter {
 
       for (let i = 0; i < tokens.length; i++) {
         let token = tokens[i]
+
+        queued.push(token)
+
         if (token.is(TOKENS.EOL)) {
           let lineTokens = this.getTokensForLine(l)
           let first = _.first(lineTokens)
 
           if (!first || first.is(TOKENS.EOL)) {
-            newTokens.push(token)
+            newTokens = _.concat(newTokens, queued)
+            queued = []
             l++
             continue
           }
@@ -330,10 +337,8 @@ class Tokenizer extends Emitter {
           let newIndent = false
 
           // if (!first.is(TOKENS.EOL) && needsIndentLevel > 0 && indents !== needsIndentLevel) {
-          //   var o = this._offset
           //   this._offset = i
           //   this.error('Indentation error', indents, needsIndentLevel)
-          //   this._offset = o
           // }
           // needsIndentLevel = 0
 
@@ -363,12 +368,16 @@ class Tokenizer extends Emitter {
 
           level = indents
 
+          newTokens = _.concat(newTokens, queued)
+          queued = []
           l++
         }
-        newTokens.push(token)
       }
 
-      addEnds(-1)
+      addEnds(0, 0)
+
+      newTokens = _.concat(newTokens, queued)
+      queued = []
 
       this._tokens = newTokens
     }
@@ -377,6 +386,7 @@ class Tokenizer extends Emitter {
   dump () {
     console.info('Tokenizer dump')
     console.log('Tokens: ', this._tokens)
+    console.log(_.map(this._tokens, 'value').join(' '))
     console.log('Lines: ', this._lines)
     console.log('Lines Tokens: ', this._lineTokens)
     console.log('Offsets: ', this._lineOffsets)
