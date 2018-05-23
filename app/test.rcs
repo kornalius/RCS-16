@@ -2,15 +2,10 @@ class MYCLASS
   constructor =>
     let f (a, b) =>
       print a b
-    end
     f 555 666
-  end
 
-  test (arg) =>
+  test_method (arg) =>
     print arg
-  end
-
-end
 
 let a  =   100
 a = 20
@@ -19,7 +14,6 @@ let test =>
   return
     a: [10 [20, 40] 30]
     b: 10
-end
 
 if a > 100
   print ">" a
@@ -27,8 +21,7 @@ else if a < 100
   print "<" a
 else
   print "=" a
-end
 
 print test.a[1][0]
 let o = new MYCLASS
-o.test(10)
+o.test_method(10)

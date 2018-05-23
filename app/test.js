@@ -29,6 +29,7 @@ class Test extends Emitter {
       RCS.console.draw()
 
       let fn = await RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'))
+      RCS.main.compiler.dump()
       fn()
     })
   }

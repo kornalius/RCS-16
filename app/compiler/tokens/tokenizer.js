@@ -24,6 +24,7 @@ class Tokenizer extends Emitter {
     this._constants = {}
     this._lines = undefined
     this._lineOffsets = undefined
+    this._lineIndents = undefined
     return this
   }
 
@@ -38,31 +39,61 @@ class Tokenizer extends Emitter {
   get eos () { return this._offset >= this.length }
 
   get lines () {
+    let text = this._text
+    let len = this.length
+    let i = 0
+    let start = 0
+
+    const indentCount = line => {
+      let ll = line.length
+
+      let x = 0
+      let c = 0
+      while (x < ll) {
+        if (line.substr(x, 2) === '  ') {
+          x += 2
+          c++
+        }
+        else if (line.charAt(x) === TOKENS.TAB) {
+          x++
+          c++
+        }
+        else {
+          break
+        }
+      }
+
+      return c
+    }
+
+    const push = () => {
+      let line = text.substring(start, i - 1)
+      this._lineIndents.push(indentCount(line))
+      this._lineOffsets.push(start)
+      this._lines.push(line)
+    }
+
     if (!this._lines) {
       this._lines = []
       this._lineOffsets = []
+      this._lineIndents = []
 
       let eol = _.find(TOKENS.RULES, r => r[0] === TOKENS.EOL)[1]
-      let text = this._text
-      let len = this.length
-      let i = 0
-      let start = 0
 
       while (i <= len) {
         let m = text.substring(i++).match(eol)
         if (m && m.index === 0) {
-          this._lineOffsets.push(start)
-          this._lines.push(text.substring(start, i - 1))
+          push()
           i += m[0].length - 1
           start = i
         }
       }
 
       if (start < i) {
-        this._lineOffsets.push(start)
-        this._lines.push(text.substring(start, i - 1))
+        push()
       }
     }
+
     return this._lines
   }
 
@@ -71,6 +102,28 @@ class Tokenizer extends Emitter {
       let lines = this.lines // eslint-disable-line
     }
     return this._lineOffsets
+  }
+
+  get lineIndents () {
+    if (!this._lineIndents) {
+      let lines = this.lines // eslint-disable-line
+    }
+    return this._lineIndents
+  }
+
+  get lineTokens () { return this._lineTokens }
+
+  getTokensForLine (l) {
+    let tokens = []
+    let offsets = this.lineOffsets
+    let start = offsets[l]
+    let end = l + 1 < offsets.length ? offsets[l + 1] : this.length
+    for (let t of this._tokens) {
+      if (t._start >= start && t._end <= end) {
+        tokens.push(t)
+      }
+    }
+    return tokens
   }
 
   lineFromOffset (offset) {
@@ -97,15 +150,16 @@ class Tokenizer extends Emitter {
   }
 
   append (token) {
-    let c = this.findConstant(token.value)
-    if (c) {
-      token = c
-    }
-
     if (_.isArray(token)) {
-      this._tokens = _.concat(this._tokens, token)
+      for (let t of token) {
+        this.append(t)
+      }
     }
     else {
+      let c = this.findConstant(token.value)
+      if (c) {
+        token = c
+      }
       this._tokens.push(token)
     }
   }
@@ -224,16 +278,109 @@ class Tokenizer extends Emitter {
     this._text = text
     this._path = path
 
+    let lines = this.lines // eslint-disable-line
+
     while (!this.eos) {
       this._offset = await this.next(this._offset, skipComments, skipWhitespaces)
     }
 
+    this.addIndentEnds()
+
     return this._errors === 0 ? this._tokens : undefined
   }
 
+  addIndentEnds () {
+    if (!_.isEmpty(this._tokens)) {
+      let l = 0
+      let level = 0
+      let needsEnd = {}
+      let needsIndentLevel = false
+      let newTokens = []
+      let tokens = this._tokens
+      let lineIndents = this._lineIndents
+
+      const addEnds = (level, indents, token) => {
+        while (level >= indents) {
+          while (needsEnd[level] > 0) {
+            newTokens.push(new Token(this, TOKENS.END, 'end', token ? token.start : this.length, token ? token.end : this.length))
+            newTokens.push(new Token(this, TOKENS.EOL, '\n', token ? token.start : this.length, token ? token.end : this.length))
+            needsEnd[level]--
+            console.log(indents, level, needsEnd[level], _.padStart('end', level * 2 + 3, ' '))
+          }
+          level--
+        }
+      }
+
+      for (let i = 0; i < tokens.length; i++) {
+        let token = tokens[i]
+        if (token.is(TOKENS.EOL)) {
+          let lineTokens = this.getTokensForLine(l)
+          let first = _.first(lineTokens)
+
+          if (!first || first.is(TOKENS.EOL)) {
+            newTokens.push(token)
+            l++
+            continue
+          }
+
+          let indents = lineIndents[l]
+          let last = _.nth(lineTokens, -2)
+
+          let debug = []
+          let newIndent = false
+
+          // if (!first.is(TOKENS.EOL) && needsIndentLevel > 0 && indents !== needsIndentLevel) {
+          //   var o = this._offset
+          //   this._offset = i
+          //   this.error('Indentation error', indents, needsIndentLevel)
+          //   this._offset = o
+          // }
+          // needsIndentLevel = 0
+
+          if (indents < level && !first.is([TOKENS.END, TOKENS.ELSE]) && needsEnd[indents] > 0) {
+            addEnds(level, indents, token)
+            needsIndentLevel = indents - 1
+          }
+
+          if (first.is([TOKENS.IF, TOKENS.CLASS]) || last && last.is(TOKENS.FN_ASSIGN)) {
+            if (_.isUndefined(needsEnd[indents])) {
+              needsEnd[indents] = 0
+            }
+            needsEnd[indents]++
+            needsIndentLevel = indents + 1
+            newIndent = true
+          }
+
+          debug.push(indents)
+          debug.push(level)
+          debug.push(needsEnd[indents] || 0)
+          debug.push(this.lines[l])
+          if (newIndent) {
+            debug.push('**')
+          }
+
+          console.log(...debug)
+
+          level = indents
+
+          l++
+        }
+        newTokens.push(token)
+      }
+
+      addEnds(-1)
+
+      this._tokens = newTokens
+    }
+  }
+
   dump () {
-    console.info('tokenizer dump')
-    console.log(this._tokens)
+    console.info('Tokenizer dump')
+    console.log('Tokens: ', this._tokens)
+    console.log('Lines: ', this._lines)
+    console.log('Lines Tokens: ', this._lineTokens)
+    console.log('Offsets: ', this._lineOffsets)
+    console.log('Indents: ', this._lineIndents)
     console.log('')
   }
 

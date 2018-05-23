@@ -102,7 +102,7 @@ const RULES = [
   [NUMBER, new RegExp('^(' + MINUS_PLUS + '?' + NUM + '*\\.?' + NUM + '+([eE]' + MINUS_PLUS + '?' + NUM + '+)?)')],
   [HEXADECIMAL, new RegExp('^0x(' + HEXA + '+)', 'i')],
 
-  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, EXTENDS, NEW, SUPER, END, STEP, TO].join('|') + ')' + SPACE + '+', 'i')],
+  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, EXTENDS, NEW, SUPER, END, STEP, TO].join('|') + ')' + '(?=' + SPACE + '|' + EOL + ')' + '+', 'i')],
 
   [STRING, new RegExp('^' + DOUBLE_QUOTE + '([^' + DOUBLE_QUOTE + ']*)' + DOUBLE_QUOTE)],
   [CHAR, new RegExp('^' + QUOTE + '(.)' + QUOTE)],

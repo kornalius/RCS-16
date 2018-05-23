@@ -14,8 +14,6 @@ class FrameItem extends Emitter {
     this._name = name
     this._type = type
     this._value = value
-
-    console.log(this._name, this._type, this._value)
   }
 
   get frame () { return this._frame }

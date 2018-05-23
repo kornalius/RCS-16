@@ -164,7 +164,7 @@ class Parser extends Emitter {
   }
 
   dump () {
-    console.info('parser dump')
+    console.info('Parser dump')
     console.log(this._nodes)
     console.log('')
   }

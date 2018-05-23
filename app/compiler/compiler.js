@@ -30,36 +30,32 @@ _.extend(RCS.Compiler, {
 
 class Compiler extends Emitter {
 
-  async tokenize (text, path) {
-    let tokenizer = new Tokenizer()
-    return tokenizer.tokenize(text, path)
-  }
+  constructor () {
+    super()
 
-  async parse (tokens) {
-    let lexer = new Lexer(tokens)
-    return lexer.parse(tokens)
-  }
-
-  async transpile (nodes) {
-    let transpiler = new Transpiler()
-    return transpiler.transpile(nodes)
+    this._tokenizer = new Tokenizer()
+    this._lexer = new Lexer()
+    this._transpiler = new Transpiler()
   }
 
   async compile (text, path) {
-    let tokens = await this.tokenize(text, path)
-    if (tokens) {
-      // console.log(tokens)
-
-      let nodes = await this.parse(tokens)
-      if (nodes) {
-        // console.log(nodes)
-
-        let code = await this.transpile(nodes)
-        console.log(code)
-        return code
+    await this._tokenizer.tokenize(text, path)
+    if (!this._tokenizer.errors) {
+      await this._lexer.parse(this._tokenizer.tokens)
+      if (!this._lexer.errors) {
+        await this._transpiler.transpile(this._lexer.nodes)
+        if (!this._transpiler.errors) {
+          return this._transpiler.code
+        }
       }
     }
     return undefined
+  }
+
+  dump () {
+    this._tokenizer.dump()
+    this._lexer.dump()
+    this._transpiler.dump()
   }
 
 }

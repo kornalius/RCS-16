@@ -418,7 +418,7 @@ class Transpiler extends Emitter {
   }
 
   dump () {
-    console.info('transpiler dump')
+    console.info('Transpiler dump')
     console.log(this._code)
     console.log('')
   }

@@ -4,7 +4,7 @@
 
 const { Emitter } = require('./mixins/common/events')
 const { Compiler, error } = require('./compiler/compiler')
-const { fs, path } = require('./utils')
+const { fs } = require('./utils')
 
 const STOPPED = 0
 const RUNNING = 1
@@ -15,6 +15,8 @@ class Main extends Emitter {
   constructor () {
     super()
 
+    this._compiler = new Compiler()
+
     this.reset()
     setTimeout(() => this.start())
 
@@ -24,12 +26,6 @@ class Main extends Emitter {
 
   reset () {
     this._state = STOPPED
-    this._program = {
-      path: undefined,
-      code: undefined,
-      tokens: undefined,
-      fn: undefined,
-    }
     return this
   }
 
@@ -55,10 +51,8 @@ class Main extends Emitter {
   }
 
   get isRunning () { return this._state === RUNNING }
-
   get isPaused () { return this._state === PAUSED }
-
-  get program () { return this._program }
+  get compiler () { return this._compiler }
 
   start () {
     if (!this.isRunning) {
@@ -93,8 +87,7 @@ class Main extends Emitter {
   }
 
   async compile (text = '', path) {
-    let compiler = new Compiler()
-    let code = await compiler.compile(text, path)
+    let code = await this._compiler.compile(text, path)
     return code ? Function(code) : undefined
   }
 
