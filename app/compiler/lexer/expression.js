@@ -9,7 +9,14 @@ const TOKENS = require('../tokens/tokens')
 class Expression extends Statement {
 
   term_expr (left) {
-    return this.is([TOKENS.PLUS, TOKENS.MINUS]) ? this.next_expr_node(left) : undefined
+    if (this.is(TOKENS.MATH_STATEMENT)) {
+      left.right = new Node(this.token)
+      this.next()
+      return left
+    }
+    else {
+      return this.is([TOKENS.PLUS, TOKENS.MINUS]) ? this.next_expr_node(left) : undefined
+    }
   }
 
   factor_expr (left) {
@@ -75,27 +82,36 @@ class Expression extends Statement {
     return this.loop_while(this.expr, undefined, end, end_next, TOKENS.COMMA)
   }
 
+  single_expr (node) {
+    let term = this.term_expr(node)
+    if (term) {
+      return term
+    }
+
+    let factor = this.factor_expr(node)
+    if (factor) {
+      return factor
+    }
+
+    let conditional = this.conditional_expr(node)
+    if (conditional) {
+      return conditional
+    }
+
+    let junction = this.junction_expr(node)
+    if (junction) {
+      return junction
+    }
+
+    return undefined
+  }
+
   expr () {
     let node = this.simple_expr()
     if (node) {
-      let term = this.term_expr(node)
-      if (term) {
-        return term
-      }
-
-      let factor = this.factor_expr(node)
-      if (factor) {
-        return factor
-      }
-
-      let conditional = this.conditional_expr(node)
-      if (conditional) {
-        return conditional
-      }
-
-      let junction = this.junction_expr(node)
-      if (junction) {
-        return junction
+      let n = this.single_expr(node)
+      if (n) {
+        return n
       }
     }
     return node
@@ -247,6 +263,10 @@ class Expression extends Statement {
       }
     }
 
+    if (this.is([TOKENS.MATH_STATEMENT, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) {
+      return this.single_expr(node)
+    }
+
     return node
   }
 
@@ -334,12 +354,18 @@ class Expression extends Statement {
       this.next()
     }
 
-    node.body = this.block(TOKENS.END, false)
+    let end = TOKENS.END
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = TOKENS.DEDENT
+      this.next(2)
+    }
+
+    node.body = this.block(end, false)
     node._token._type = TOKENS.FN_ASSIGN
 
     this._frames.end()
 
-    this.expect(TOKENS.END)
+    this.expect(end)
 
     if (statement) {
       this._fnLevel--

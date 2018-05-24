@@ -25,3 +25,11 @@ else
 print test.a[1][0]
 let o = new MYCLASS
 o.test_method(10)
+
+let i = 0
+while i < 10
+  i++
+
+i+=10
+print i, "done"
+

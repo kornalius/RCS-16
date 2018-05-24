@@ -88,8 +88,8 @@ class Main extends Emitter {
     return this
   }
 
-  async compile (text = '', path) {
-    let code = await this._compiler.compile(text, path)
+  async compile (text = '', path, dump = false) {
+    let code = await this._compiler.compile(text, path, dump)
     return code ? Function(code) : undefined
   }
 

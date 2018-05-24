@@ -30,7 +30,7 @@ class Statement extends Parser {
   }
 
   statement () {
-    if (this.match([TOKENS.LET], [TOKENS.ID], TOKENS.ASSIGN)) { // variable assignment
+    if (this.match([TOKENS.LET], [TOKENS.ID], [TOKENS.ASSIGN, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) { // variable assignment
       this.next() // skip LET keyword
       return this.var_assign(true)
     }
@@ -38,10 +38,10 @@ class Statement extends Parser {
       this.next() // skip LET keyword
       return this.fn_assign(true, true)
     }
-    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], TOKENS.ASSIGN)) { // variable assignment
+    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], [TOKENS.ASSIGN, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) { // variable assignment
       return this.var_assign()
     }
-    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], this.isArguments, [TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) { // function assignment
+    else if (this.match([TOKENS.ID, TOKENS.ID_FIELD, TOKENS.THIS_FIELD], this.isArguments, TOKENS.FN_ASSIGN)) { // function assignment
       return this.fn_assign(false, true)
     }
     else if (this.is(TOKENS.IF)) { // if block
@@ -65,7 +65,7 @@ class Statement extends Parser {
     else if (this.is(TOKENS.NEW)) { // new statement
       return this.new_expr()
     }
-    else if (this.is(TOKENS.ID)) { // function call
+    else if (this.is(TOKENS.ID)) {
       return this.id_statement()
     }
     else {
@@ -93,9 +93,12 @@ class Statement extends Parser {
 
     this.next()
 
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      this.next(2)
+    }
+
     this._classFrame = undefined
     node.expr = this.expr()
-
     node._let = _let
 
     if (_let) {
@@ -107,6 +110,7 @@ class Statement extends Parser {
 
   if_statement (expect_end = true) {
     let token = this.token
+
     this.next()
     let expr_block
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -117,49 +121,84 @@ class Statement extends Parser {
     else {
       expr_block = this.expr()
     }
-    let true_body = this.block([TOKENS.ELSE, TOKENS.END], false, TOKENS.IF)
-    let false_body = this.is(TOKENS.ELSE) ? this.else_statement() : undefined
-    if (expect_end) {
-      this.expect(TOKENS.END)
+
+    let end = [TOKENS.ELSE, TOKENS.END]
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = [TOKENS.DEDENT, TOKENS.ELSE]
+      this.next(2)
     }
+
+    let true_body = this.block(end, false, TOKENS.IF)
+
+    if (this.is(TOKENS.DEDENT)) {
+      this.next()
+    }
+
+    let false_body = this.is(TOKENS.ELSE) ? this.else_statement() : undefined
+
+    if (expect_end) {
+      this.expect(end)
+    }
+
     return new Node(token, { expr: expr_block, true_body, false_body })
   }
 
   else_statement () {
     let token = this.token
     let node
+
     this.next()
     if (this.is(TOKENS.IF)) {
       node = this.if_statement(false)
       node._token = token
     }
     else {
-      node = new Node(token, { false_body: this.block(TOKENS.END, false, TOKENS.ELSE) })
+      let end = TOKENS.END
+      if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+        end = TOKENS.DEDENT
+        this.next(2)
+      }
+
+      node = new Node(token, { false_body: this.block(end, false, TOKENS.ELSE) })
     }
+
     return node
   }
 
   for_statement () {
     let token = this.token
-    this.next()
 
+    this.next()
     let v = this.token
+
     this.expect([TOKENS.ID, TOKENS.VAR], TOKENS.ASSIGN)
     let min_expr = this.expr()
+
     this.expect(TOKENS.TO)
     let max_expr = this.expr()
+
     let step_expr
     if (this.is(TOKENS.STEP)) {
       this.next()
       step_expr = this.expr()
     }
-    let body = this.block(TOKENS.END, false, TOKENS.FOR)
-    this.expect(TOKENS.END)
+
+    let end = TOKENS.END
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = TOKENS.DEDENT
+      this.next(2)
+    }
+
+    let body = this.block(end, false, TOKENS.FOR)
+
+    this.expect(end)
+
     return new Node(token, { v, min_expr, max_expr, step_expr, body })
   }
 
   while_statement () {
     let token = this.token
+
     this.next()
     let expr_block
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -170,27 +209,46 @@ class Statement extends Parser {
     else {
       expr_block = this.expr()
     }
-    let body = this.block(TOKENS.END, false, TOKENS.WHILE)
-    this.expect(TOKENS.END)
+
+    let end = TOKENS.END
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = TOKENS.DEDENT
+      this.next(2)
+    }
+
+    let body = this.block(end, false, TOKENS.WHILE)
+
+    this.expect(end)
+
     return new Node(token, { expr: expr_block, body })
   }
 
   return_statement () {
     let p = false
-    let end = [TOKENS.END]
+    let end = TOKENS.END
     let node = new Node(this.token)
+
     this.next()
     if (this.is(TOKENS.OPEN_PAREN)) {
       p = true
       end = TOKENS.CLOSE_PAREN
       this.next()
     }
+
+    else if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = TOKENS.DEDENT
+      p = true
+      this.next(2)
+    }
+
     if (!p || !this.is(TOKENS.CLOSE_PAREN)) {
       node.args = this.exprs(end)
     }
+
     if (p) {
-      this.expect(TOKENS.CLOSE_PAREN)
+      this.expect(end)
     }
+
     return node
   }
 
@@ -213,11 +271,17 @@ class Statement extends Parser {
 
     this._frames.add(id.value, TOKENS.CLASS)
 
+    let end = TOKENS.END
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = TOKENS.DEDENT
+      this.next(2)
+    }
+
     this._inClass = true
-    let body = this.block(TOKENS.END, false, TOKENS.CLASS)
+    let body = this.block(end, false, TOKENS.CLASS)
     this._inClass = false
 
-    this.expect(TOKENS.END)
+    this.expect(end)
 
     return new Node(token, { id, _extends, body })
   }

@@ -7,13 +7,12 @@ const TOKENS = require('./tokens')
 
 class Token {
 
-  constructor (tokenizer, type, value = '', start, end, indent) {
+  constructor (tokenizer, type, value = '', start, end) {
     if (tokenizer instanceof Token) {
       type = tokenizer.type
       value = tokenizer.value
       start = tokenizer.start
       end = tokenizer.end
-      indent = tokenizer.indent
       tokenizer = tokenizer.tokenizer
     }
     if (_.isString(tokenizer)) {
@@ -27,7 +26,6 @@ class Token {
     this._value = value
     this._start = start
     this._end = end
-    this._indent = indent
   }
 
   get tokenizer () { return this._tokenizer }
@@ -43,7 +41,6 @@ class Token {
   get start () { return this._offsetPos(this._start) }
   get end () { return this._offsetPos(this._end) }
   get length () { return this._end - this._start }
-  get indent () { return this._indent }
 
   _offsetPos (offset) {
     let tokenizer = this._tokenizer

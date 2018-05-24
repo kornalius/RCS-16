@@ -101,10 +101,9 @@ class Transpiler extends Emitter {
       let id = this.expr(node.id)
       let _let = node._let ? 'let ' : ''
       let expr
-      let op
+      let op = ' ' + node.value + ' '
 
-      if (node.is(TOKENS.ASSIGN)) {
-        op = ' ' + node.value + ' '
+      if (node.is([TOKENS.ASSIGN, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) {
         expr = this.expr(node.expr)
       }
       else if (node.is(TOKENS.FN_ASSIGN)) {
@@ -156,7 +155,7 @@ class Transpiler extends Emitter {
     else if (node) {
       let t = {}
 
-      if (node.is([TOKENS.ASSIGN, TOKENS.FN_ASSIGN])) {
+      if (node.is([TOKENS.ASSIGN, TOKENS.FN_ASSIGN, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) {
         t = this.assign(node)
       }
       else if (node.is(TOKENS.FN)) {
@@ -246,11 +245,13 @@ class Transpiler extends Emitter {
       }
       else if (node.is(TOKENS.ID)) {
         t = {
-          tmpl: '{{value}}{{fields}}{{assign}}',
+          tmpl: '{{left}}{{value}}{{fields}}{{right}}{{assign}}',
           data: {
+            left: node.left ? this.expr(node.left) : '',
             value: node.value,
             fields: !_.isEmpty(node.fields) ? this.expr(node.fields, '') : '',
             assign: node.assign ? ' = ' + this.expr(node.assign, '') : '',
+            right: node.right ? this.expr(node.right) : '',
           }
         }
       }
@@ -332,8 +333,8 @@ class Transpiler extends Emitter {
             tmpl: '{{left}} {{op}} {{right}}',
             data: {
               op: node.value,
-              left: this.expr(node.left),
-              right: this.expr(node.right),
+              left: node.left ? this.expr(node.left) : '',
+              right: node.right ? this.expr(node.right) : '',
             }
           }
         }
