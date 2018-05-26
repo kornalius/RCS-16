@@ -12,6 +12,6 @@ body {
 
 * {
   cursor: none !important;
-  -webkit-user-select: none;
-  user-select: none;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }

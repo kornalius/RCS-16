@@ -72,7 +72,7 @@ class Expression extends Statement {
       return this.id_expr()
     }
     else {
-      this.error('number, string, variable, array expr, dict expr, super, new, paren or function call/expression expected')
+      this.error('number, string, variable, array, dict, super, new, paren or function call/expression expected')
       this.next()
     }
     return undefined
@@ -124,7 +124,7 @@ class Expression extends Statement {
   }
 
   this_expr () {
-    if (!this._inClass) {
+    if (!this._frames.inClass) {
       this.error(TOKENS.AMPER + ' cannot be used outside class definition')
       this.next()
       return undefined
@@ -139,26 +139,29 @@ class Expression extends Statement {
   }
 
   super_expr () {
-    if (!this._inClass) {
+    if (!this._frames.inClass) {
       this.error(TOKENS.SUPER + ' cannot be used outside class definition')
       this.next()
       return undefined
     }
-    return this.id_expr()
+    return this.id_expr(true)
   }
 
   new_expr () {
     let token = this.token
+
     this.next()
     let id = this.token
+
     this.next()
+
     let f = this._frames.exists(id.value, TOKENS.CLASS)
     if (!f) {
       this.error(id, 'undeclared class')
       return undefined
     }
 
-    this._classFrame = f
+    this._classFrame = f.classFrame
 
     let args = []
     if (this.is(TOKENS.OPEN_PAREN)) {
@@ -225,7 +228,7 @@ class Expression extends Statement {
     return node
   }
 
-  id_expr () {
+  id_expr (_super = false) {
     if (this._inArgs) {
       let node = new Node(this.token)
       this._frames.add(this.token.value, TOKENS.VAR)
@@ -234,7 +237,7 @@ class Expression extends Statement {
     }
 
     let i = this._frames.exists(this.token.value)
-    if (!i) {
+    if (!i && !_super) {
       this.error('undeclared identifier')
       this.next()
       return undefined
@@ -242,12 +245,16 @@ class Expression extends Statement {
 
     let node
 
-    if (i.is(TOKENS.FN)) {
+    if (i && (i.is(TOKENS.FN) || i.is(TOKENS.ID) && _.isFunction(i.value))) {
       node = this.fn_call()
     }
     else {
       node = new Node(this.token)
       this.next()
+      if (this.is(TOKENS.OPEN_PAREN)) {
+        this.prev()
+        node = this.fn_call()
+      }
     }
 
     while (this.is([TOKENS.ID_FIELD, TOKENS.OPEN_BRACKET, TOKENS.OPEN_PAREN])) {
@@ -261,6 +268,28 @@ class Expression extends Statement {
       else {
         node.fields.push(this.id_field())
       }
+    }
+
+    let fn = false
+
+    if (i && (i.classFrame || i.is(TOKENS.ID) && _.isObject(i.value))) {
+      let o = new RCS.Compiler.Transpiler().expr(node.fields).substr(1)
+      let v = i.classFrame ? i.classFrame.exists(o) : _.get(i.value, o)
+      if (_.isFunction(v) || v && v.is(TOKENS.FN)) {
+        fn = true
+      }
+    }
+    else if (node.value === TOKENS.SUPER && _.isEmpty(node.fields) && !node.is(TOKENS.FN)) {
+      this.prev()
+      node = this.fn_call()
+    }
+
+    if (fn) {
+      node.fields.pop()
+      this.prev()
+      let n = this.fn_call()
+      n._field = true
+      node.fields.push(n)
     }
 
     if (this.is([TOKENS.MATH_STATEMENT, TOKENS.MATH_ASSIGN, TOKENS.LOGIC_ASSIGN])) {
@@ -333,7 +362,7 @@ class Expression extends Statement {
     let node = new Node(this.token, { id })
 
     if (statement) {
-      node._inClass = this._inClass
+      node._inClass = this._frames.inClass
       node._fnLevel = this._fnLevel++
       this._frames.add(id.value, TOKENS.FN)
     }
@@ -354,11 +383,7 @@ class Expression extends Statement {
       this.next()
     }
 
-    let end = TOKENS.END
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = TOKENS.DEDENT
-      this.next(2)
-    }
+    let end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
 
     node.body = this.block(end, false)
     node._token._type = TOKENS.FN_ASSIGN

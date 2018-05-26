@@ -3,10 +3,10 @@
  */
 
 const { Emitter } = require('./mixins/common/events')
-const { Compiler, error } = require('./compiler/compiler')
+const { Compiler } = require('./compiler/compiler')
 const { fs } = require('./utils')
 
-const _VIDEO_ = 0
+const _VIDEO_ = true
 
 const STOPPED = 0
 const RUNNING = 1
@@ -115,7 +115,7 @@ class Main extends Emitter {
     if (_.isError(e)) {
       e = e.message
     }
-    error(e)
+    console.error(e)
   }
 
   run (fn, ...args) {
@@ -131,9 +131,10 @@ class Main extends Emitter {
     if (this.state === RUNNING) {
       let t = performance.now()
 
+      RCS.mouse.tick(t, delta)
+      RCS.keyboard.tick(t, delta)
+
       if (_VIDEO_) {
-        RCS.mouse.tick(t, delta)
-        RCS.keyboard.tick(t, delta)
         RCS.palette.tick(t, delta)
         RCS.sprite.tick(t, delta)
         RCS.overlays.tick(t, delta)
@@ -154,11 +155,12 @@ class Main extends Emitter {
       await RCS.video.boot()
       await RCS.sprite.boot()
       await RCS.palette.boot()
-      await RCS.mouse.boot()
-      await RCS.keyboard.boot()
       await RCS.overlays.boot()
       await RCS.sound.boot()
     }
+
+    await RCS.mouse.boot()
+    await RCS.keyboard.boot()
   }
 
 }

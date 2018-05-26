@@ -32,7 +32,7 @@ class Token {
 
   get type () {
     if (this._type === TOKENS.RESERVED) {
-      return this._value.toUpperCase()
+      return this._value
     }
     return this._type
   }

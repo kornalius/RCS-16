@@ -65,8 +65,12 @@ class Statement extends Parser {
     else if (this.is(TOKENS.NEW)) { // new statement
       return this.new_expr()
     }
-    else if (this.is(TOKENS.ID)) {
+    else if (this.is([TOKENS.ID, TOKENS.SUPER])) {
       return this.id_statement()
+    }
+    else if (this.is(TOKENS.INDENT)) {
+      this.error('indentation error')
+      this.next()
     }
     else {
       this.error('syntax error')
@@ -76,12 +80,7 @@ class Statement extends Parser {
   }
 
   id_statement () {
-    if (this.is(TOKENS.SUPER)) {
-      return this.super_expr()
-    }
-    else {
-      return this.id_expr()
-    }
+    return this.is(TOKENS.SUPER) ? this.super_expr() : this.id_expr()
   }
 
   var_assign (_let = false) {
@@ -93,16 +92,14 @@ class Statement extends Parser {
 
     this.next()
 
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      this.next(2)
-    }
+    this.getEnd()
 
     this._classFrame = undefined
     node.expr = this.expr()
     node._let = _let
 
     if (_let) {
-      this._frames.add(id.value, TOKENS.VAR, this._classFrame)
+      this._frames.add(id.value, TOKENS.VAR, undefined, this._classFrame)
     }
 
     return node
@@ -122,11 +119,7 @@ class Statement extends Parser {
       expr_block = this.expr()
     }
 
-    let end = [TOKENS.ELSE, TOKENS.END]
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = [TOKENS.DEDENT, TOKENS.ELSE]
-      this.next(2)
-    }
+    let end = this.getEnd([TOKENS.ELSE, TOKENS.END], [TOKENS.DEDENT, TOKENS.ELSE])
 
     let true_body = this.block(end, false, TOKENS.IF)
 
@@ -153,12 +146,7 @@ class Statement extends Parser {
       node._token = token
     }
     else {
-      let end = TOKENS.END
-      if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-        end = TOKENS.DEDENT
-        this.next(2)
-      }
-
+      let end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
       node = new Node(token, { false_body: this.block(end, false, TOKENS.ELSE) })
     }
 
@@ -183,11 +171,7 @@ class Statement extends Parser {
       step_expr = this.expr()
     }
 
-    let end = TOKENS.END
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = TOKENS.DEDENT
-      this.next(2)
-    }
+    let end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
 
     let body = this.block(end, false, TOKENS.FOR)
 
@@ -210,11 +194,7 @@ class Statement extends Parser {
       expr_block = this.expr()
     }
 
-    let end = TOKENS.END
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = TOKENS.DEDENT
-      this.next(2)
-    }
+    let end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
 
     let body = this.block(end, false, TOKENS.WHILE)
 
@@ -229,16 +209,15 @@ class Statement extends Parser {
     let node = new Node(this.token)
 
     this.next()
+
     if (this.is(TOKENS.OPEN_PAREN)) {
       p = true
       end = TOKENS.CLOSE_PAREN
       this.next()
     }
-
-    else if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = TOKENS.DEDENT
-      p = true
-      this.next(2)
+    else {
+      end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
+      p = end === TOKENS.DEDENT
     }
 
     if (!p || !this.is(TOKENS.CLOSE_PAREN)) {
@@ -252,34 +231,36 @@ class Statement extends Parser {
     return node
   }
 
-  class_list () {
-    return this.loop_while(this.single, [TOKENS.ID], TOKENS.EOL, true, TOKENS.COMMA)
-  }
-
   class_statement () {
     let token = this.token
+    let _extends
+    let _extendsFrame
 
     this.next()
     let id = this.token
 
     this.next()
-    let _extends
     if (this.is(TOKENS.EXTENDS)) {
       this.next()
-      _extends = this.class_list()
+      _extends = this.token
+      _extendsFrame = this._frames.exists(this.token.value, TOKENS.CLASS)
+      this.next()
+      if (!_extendsFrame) {
+        this.error(_extends, 'undeclared class')
+        return undefined
+      }
     }
 
-    this._frames.add(id.value, TOKENS.CLASS)
+    let fi = this._frames.add(id.value, TOKENS.CLASS)
 
-    let end = TOKENS.END
-    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
-      end = TOKENS.DEDENT
-      this.next(2)
-    }
+    let f = this._frames.start(id.value, TOKENS.CLASS, false, _extendsFrame ? _extendsFrame.classFrame : undefined)
+    fi._classFrame = f
 
-    this._inClass = true
-    let body = this.block(end, false, TOKENS.CLASS)
-    this._inClass = false
+    let end = this.getEnd(TOKENS.END, TOKENS.DEDENT)
+
+    let body = this.block(end, false)
+
+    this._frames.end(false)
 
     this.expect(end)
 

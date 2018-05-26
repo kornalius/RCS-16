@@ -399,11 +399,8 @@ class Transpiler extends Emitter {
 
     this.codeStart()
 
-    for (let key in RCS.Compiler.globals) {
-      let v = RCS.Compiler.globals[key]
-      if (_.isFunction(v)) {
-        this.writeln(this.indentize(v.toString()))
-      }
+    for (let key in RCS.Compiler.Lexer.globals) {
+      this.writeln(this.indentize('const ' + key + ' = RCS.Compiler.Lexer.globals.' + key + ';'))
     }
     this.writeln()
 

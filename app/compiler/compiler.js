@@ -7,15 +7,10 @@ const { Tokenizer } = require('./tokens/tokenizer')
 const { Node } = require('./lexer/node')
 const { Lexer } = require('./lexer/lexer')
 
-const globals = {
-  print: function print () { console.log(...arguments) }
-}
-
 RCS.Compiler = {
   Node,
   Lexer,
   Tokenizer,
-  globals,
 }
 
 const { FrameItem, Frame, Frames } = require('./frame')

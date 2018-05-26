@@ -61,24 +61,24 @@ const HEXA = '[0-9A-F]'
 
 const EOL = 'EOL'
 const COMMENT = 'COMMENT'
-const CONST = 'CONST'
-const IF = 'IF'
-const ELSE = 'ELSE'
-const WHILE = 'WHILE'
-const FOR = 'FOR'
-const LET = 'LET'
-const CLASS = 'CLASS'
-const EXTENDS = 'EXTENDS'
-const NEW = 'NEW'
-const SUPER = 'SUPER'
-const RETURN = 'RETURN'
-const BREAK = 'BREAK'
-const CONTINUE = 'CONTINUE'
+const CONST = 'const'
+const IF = 'if'
+const ELSE = 'else'
+const WHILE = 'while'
+const FOR = 'for'
+const LET = 'let'
+const CLASS = 'class'
+const EXTENDS = 'extends'
+const NEW = 'new'
+const SUPER = 'super'
+const RETURN = 'return'
+const BREAK = 'break'
+const CONTINUE = 'continue'
 const FN = 'FN'
 const VAR = 'VAR'
-const END = 'END'
-const STEP = 'STEP'
-const TO = 'TO'
+const END = 'end'
+const STEP = 'step'
+const TO = 'to'
 
 const GLOBALS = 'GLOBALS'
 
@@ -116,9 +116,9 @@ const RULES = [
   [NUMBER, new RegExp('^(' + MINUS_PLUS + '?' + NUM + '*\\.?' + NUM + '+([eE]' + MINUS_PLUS + '?' + NUM + '+)?)')],
   [HEXADECIMAL, new RegExp('^0x(' + HEXA + '+)', 'i')],
 
-  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, EXTENDS, NEW, SUPER, END, STEP, TO].join('|') + ')' + '(?=' + SPACE + '|' + EOL + ')' + '+', 'i')],
+  [RESERVED, new RegExp('^(' + [IF, ELSE, WHILE, CONST, RETURN, BREAK, CONTINUE, FOR, LET, CLASS, EXTENDS, NEW, END, STEP, TO].join('|') + ')' + '(?=' + SPACE + '|' + EOL + ')')],
 
-  [STRING, new RegExp('^[' + DOUBLE_QUOTE + QUOTE + ']([^' + DOUBLE_QUOTE + ']*)[' + DOUBLE_QUOTE + QUOTE + ']')],
+  [STRING, new RegExp('^[' + DOUBLE_QUOTE + QUOTE + ']([^' + DOUBLE_QUOTE + QUOTE + ']*)[' + DOUBLE_QUOTE + QUOTE + ']')],
   [CHAR, new RegExp('^' + QUOTE + '(.)' + QUOTE)],
 
   [INCLUDE, new RegExp('^' + HASH + DOUBLE_QUOTE + '([^' + DOUBLE_QUOTE + ']*)' + DOUBLE_QUOTE)],
@@ -126,6 +126,8 @@ const RULES = [
   [KEY, new RegExp('^(' + ALPHA + ALPHA_NUM + '*)' + COLON, 'i')],
 
   [COLON, new RegExp('^' + COLON)],
+
+  [SUPER, new RegExp('^(' + SUPER + ')(?=' + ['\\' + OPEN_PAREN, '\\.', SPACE, EOL].join('|') + ')')],
 
   [ID, new RegExp('^(' + ALPHA + ALPHA_NUM + '*)', 'i')],
   [ID_FIELD, new RegExp('^\\.(' + ALPHA + ALPHA_NUM + '*)', 'i')],

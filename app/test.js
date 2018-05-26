@@ -26,7 +26,7 @@ class Test extends Emitter {
       // let n = RCS.sound.note(m)
       // RCS.sound.play(n)
 
-      // RCS.console.draw()
+      RCS.console.draw()
 
       let fn = await RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'), true)
       fn()

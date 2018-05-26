@@ -13,12 +13,19 @@ class Parser extends Emitter {
     this.reset()
   }
 
+  static get globals () {
+    return {
+      print: function () { console.log(...arguments) },
+      console: RCS.console,
+      main: RCS.main,
+    }
+  }
+
   get errors () { return this._errors }
   get offset () { return this._offset }
   get nodes () { return this._nodes }
   get frames () { return this._frames }
   get prevFrame () { return this._prevFrame }
-  get inClass () { return this._inClass }
   get inArgs () { return this._inArgs }
   get fnLevel () { return this._fnLevel }
 
@@ -36,7 +43,6 @@ class Parser extends Emitter {
     this._nodes = []
     this._frames = new RCS.Compiler.Frames()
     this._prevFrame = undefined
-    this._inClass = false
     this._inArgs = false
     this._fnLevel = 0
     this._states = []
@@ -50,7 +56,6 @@ class Parser extends Emitter {
       nodes: _.clone(this._nodes),
       framesQueue: _.clone(this._frames.queue),
       prevFrameId: this._prevFrame ? this._prevFrame.id : undefined,
-      inClass: this._inClass,
       inArgs: this._inArgs,
       fnLevel: this._fnLevel,
     }
@@ -65,7 +70,6 @@ class Parser extends Emitter {
     this._nodes = state.nodes
     this._frames._queue = state.framesQueue
     this._prevFrame = state.prevFrameId ? _.find(this._frames.queue, { id: state.prevFrameId }) : undefined
-    this._inClass = state.inClass
     this._inArgs = state.inArgs
     this._fnLevel = state.fnLevel
   }
@@ -149,9 +153,9 @@ class Parser extends Emitter {
     this._tokens = tokens
 
     this._frames.start('PROGRAM', TOKENS.GLOBALS, true)
-    for (let key in RCS.Compiler.globals) {
-      let v = RCS.Compiler.globals[key]
-      this._frames.add(key, _.isFunction(v) ? TOKENS.FN : TOKENS.ID, v.toString())
+
+    for (let key in Parser.globals) {
+      this._frames.add(key, TOKENS.ID, Parser.globals[key])
     }
 
     let nodes = this.statements()
@@ -161,6 +165,14 @@ class Parser extends Emitter {
     this._nodes = nodes
 
     return this._errors === 0 ? nodes : undefined
+  }
+
+  getEnd (end, expected) {
+    if (this.match(TOKENS.EOL, TOKENS.INDENT)) {
+      end = expected
+      this.next(2)
+    }
+    return end
   }
 
   dump () {

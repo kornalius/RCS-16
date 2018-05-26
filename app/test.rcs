@@ -1,7 +1,18 @@
-class MYCLASS
+class OTHERCLASS
+  test_method_own (arg) =>
+    print 'OTHERCLASS' arg
+
+class MYCLASS extends OTHERCLASS
   constructor =>
+    super
+    @prop1 = 'prop1'
+
+    @method (a, b) =>
+      print a, b
+
     let f (a, b) =>
       print a b
+
     f 555 666
 
   test_method (arg) =>
@@ -23,8 +34,13 @@ else
   print "=" a
 
 print test.a[1][0]
+
 let o = new MYCLASS
 o.test_method(10)
+o.test_method 10
+o.test_method_own 10
+print o.prop1
+o.method(10, 20)
 
 let i = 0
 while i < 10
@@ -33,3 +49,4 @@ while i < 10
 i+=10
 print i, "done"
 
+main.error 'ERROR'
