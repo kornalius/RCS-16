@@ -90,7 +90,7 @@ class Video extends Emitter {
     this.clear()
   }
 
-  refresh (flip = true) {
+  update (flip = true) {
     this.force_update = true
     if (!this.force_flip) {
       this.force_flip = flip
@@ -100,7 +100,7 @@ class Video extends Emitter {
   clear () {
     if (this._buffer) {
       this.array.fill(0)
-      this.refresh()
+      this.update()
     }
   }
 
@@ -118,9 +118,7 @@ class Video extends Emitter {
     RCS.renderer.view.style.left = window.innerWidth * 0.5 - RCS.renderer.width * 0.5 + 'px'
     RCS.renderer.view.style.top = window.innerHeight * 0.5 - RCS.renderer.height * 0.5 + 'px'
 
-    if (this.refresh) {
-      this.refresh()
-    }
+    this.update()
   }
 
   flip () {
@@ -161,7 +159,7 @@ class Video extends Emitter {
     let s = lw
     let e = this.size - lw
     this.array.copy(s, 0, e - s)
-    this.refresh()
+    this.update()
   }
 
 }

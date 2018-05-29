@@ -11,6 +11,7 @@ class Overlay extends Emitter {
 
     this._width = width
     this._height = height
+    this._size = width * height
     this._offsetX = offsetX
     this._offsetY = offsetY
     this._last = 0
@@ -27,9 +28,10 @@ class Overlay extends Emitter {
     this._tex = PIXI.Texture.fromCanvas(this._canvas.canvas, PIXI.SCALE_MODES.NEAREST)
     this._tex.scaleMode = PIXI.SCALE_MODES.NEAREST
 
-    this._sprite = new PIXI.Sprite(this._tex)
-
     this._context = this._canvas.canvas.getContext('2d', { alpha: true, antialias: false })
+
+    this._sprite = new PIXI.Sprite(this._tex)
+    this._sprite._overlay = this
   }
 
   get width () { return this._width }
@@ -50,20 +52,37 @@ class Overlay extends Emitter {
     }
   }
 
+  get offsetX () { return this._offsetX }
+  get offsetY () { return this._offsetY }
+
   get last () { return this._last }
+  get size () { return this._size }
 
   get canvas () { return this._canvas }
   get tex () { return this._tex }
-  get sprite () { return this._sprite }
   get context () { return this._context }
+  get sprite () { return this._sprite }
 
   tick (t) {
+    if (this._sprite) {
+      for (let c of this._sprite.children) {
+        if (c._overlay) {
+          c._overlay.tick(t)
+        }
+      }
+    }
   }
 
   reset () {
     if (this._sprite) {
       this._sprite.x = this._offsetX
       this._sprite.y = this._offsetY
+
+      for (let c of this._sprite.children) {
+        if (c._overlay) {
+          c._overlay.reset()
+        }
+      }
     }
   }
 
@@ -71,6 +90,31 @@ class Overlay extends Emitter {
     if (this._canvas) {
       this._canvas.destroy()
       this._canvas = null
+    }
+
+    for (let c of this._sprite.children) {
+      if (c._overlay) {
+        c._overlay.shut()
+      }
+    }
+
+    this._sprite._overlay = undefined
+  }
+
+  flip (mem) {
+    if (RCS.palette.buffer) {
+      let data = this._context.getImageData(0, 0, this._width, this._height)
+      let pixels = new Uint32Array(data.data.buffer)
+
+      for (let i = 0; i < this._size; i++) {
+        pixels[i] = RCS.palette.get(mem[i])
+      }
+
+      this._context.putImageData(data, 0, 0)
+
+      this._tex.update()
+
+      this.update()
     }
   }
 
@@ -82,6 +126,17 @@ class Overlay extends Emitter {
 
 
 class ScreenOverlay extends Overlay {
+
+  constructor (width, height, offsetX, offsetY) {
+    super(width, height, offsetX, offsetY)
+
+    this.create()
+  }
+
+}
+
+
+class ContainerOverlay extends Overlay {
 
   constructor (width, height, offsetX, offsetY) {
     super(width, height, offsetX, offsetY)
@@ -234,10 +289,12 @@ class NoisesOverlay extends Overlay {
 
   shut () {
     super.shut()
+
     for (let k in this._noises) {
       let noise = this._noises[k]
       noise.shut()
     }
+
     this._noises = {}
     this._noiseKeys = []
   }
@@ -380,11 +437,15 @@ class Overlays extends Emitter {
     let height = RCS.renderer.height
     let scale = RCS.video.scale
 
-    this._overlays = ['screen', 'sprite', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
+    this._overlays = ['screen', 'containers', 'sprites', 'mouseCursor', 'scanlines', 'scanline', 'rgb', 'noises', 'crt', 'monitor']
 
-    this.sprite = new SpriteOverlay(RCS.video.width, RCS.video.height)
-    this.sprite.sprite.scale = new PIXI.Point(scale, scale)
-    RCS.stage.addChild(this.sprite.sprite)
+    this.containers = new ContainerOverlay(RCS.video.width, RCS.video.height)
+    this.containers.sprite.scale = new PIXI.Point(scale, scale)
+    RCS.stage.addChild(this.containers.sprite)
+
+    this.sprites = new ContainerOverlay(RCS.video.width, RCS.video.height)
+    this.sprites.sprite.scale = new PIXI.Point(scale, scale)
+    RCS.stage.addChild(this.sprites.sprite)
 
     this.screen = new ScreenOverlay(RCS.video.width, RCS.video.height)
     this.screen.sprite.scale = new PIXI.Point(scale, scale)
@@ -408,23 +469,11 @@ class Overlays extends Emitter {
     this.crt = new CrtOverlay(width, height)
     RCS.stage.addChild(this.crt.sprite)
 
-    let tex = PIXI.Texture.fromImage(RCS.DIRS.cwd + '/imgs/crt.png')
-    this.monitor = new PIXI.Sprite(tex)
+    this.monitor = new PIXI.Sprite(PIXI.Texture.fromImage(RCS.DIRS.cwd + '/imgs/crt.png'))
     this.monitor.width = width
     this.monitor.height = height
     this.monitor.alpha = 0.4
     RCS.stage.addChild(this.monitor)
-  }
-
-  tick (t) {
-    this.screen.tick(t)
-    this.sprite.tick(t)
-    this.scanlines.tick(t)
-    this.scanline.tick(t)
-    this.rgb.tick(t)
-    this.noises.tick(t)
-    this.crt.tick(t)
-    this.mouseCursor.tick(t)
   }
 
   async boot (cold = true) {
@@ -433,19 +482,26 @@ class Overlays extends Emitter {
     }
   }
 
+  tick (t) {
+    for (let k of this._overlays) {
+      let o = this[k]
+      if (o instanceof Overlay) {
+        o.tick(t)
+      }
+    }
+  }
+
   reset () {
-    this.screen.reset()
-    this.sprite.reset()
-    this.scanlines.reset()
-    this.scanline.reset()
-    this.rgb.reset()
-    this.noises.reset()
-    this.crt.reset()
-    this.mouseCursor.reset()
+    for (let k of this._overlays) {
+      let o = this[k]
+      if (o instanceof Overlay) {
+        o.reset()
+      }
+    }
   }
 
   shut () {
-    for (let k in this._overlays) {
+    for (let k of this._overlays) {
       if (this[k]) {
         let o = this[k].canvas
         o.shut()
@@ -457,6 +513,7 @@ class Overlays extends Emitter {
 
 module.exports = {
   ScreenOverlay,
+  ContainerOverlay,
   SpriteOverlay,
   ScanlinesOverlay,
   ScanlineOverlay,
@@ -464,5 +521,6 @@ module.exports = {
   RgbOverlay,
   CrtOverlay,
   MouseCursorOverlay,
+  Overlay,
   Overlays,
 }

@@ -4,33 +4,127 @@
 
 const { Emitter } = require('../../mixins/common/events')
 
+const CARET_TOP_X = 1
+const CARET_TOP_Y = 1
+
 class TTY extends Emitter {
 
-  constructor (font, width = 120, height = 80) {
+  constructor (options = {}) {
     super()
 
-    this._font = font
-    this._width = width
-    this._height = height
+    options = _.extend({
+      font: undefined,
+      width: 120,
+      height: 80,
+      caret: { x: CARET_TOP_X, y: CARET_TOP_Y },
+      hasCaret: false,
+      caretBlink: 750,
+    }, options)
+
+    this._font = options.font
+    this._width = options.width
+    this._height = options.height
     this._size = this._width * this._height * 3
 
+    this._overlay = new RCS.ContainerOverlay(this._width * this._font.width, this._height * this._font.height)
+    RCS.overlays.containers.sprite.addChild(this._overlay.sprite)
+
+    this._hasCaret = options.hasCaret
+    this._caretx = options.caret.x
+    this._carety = options.caret.y
+    this._caretBlink = options.caretBlink
+    this._lastBlink = 0
+
+    this._caretSprite = RCS.Sprite.rectSprite(this._font.width, this._font.height, 2)
+    this._caretSprite.visible = false
+    this._overlay.sprite.addChild(this._caretSprite)
+
+    if (options.hasCaret) {
+      this.showCaret()
+    }
+
     this.reset()
+
+    this.updateCaretPosition()
+
+    RCS.main.addTick(this)
   }
 
   get buffer () { return this._buffer }
   get array () { return this._buffer.array }
 
+  get video_buffer () { return this._video_buffer }
+  get video_array () { return this._video_buffer.array }
+
   get font () { return this._font }
   get width () { return this._width }
   get height () { return this._height }
   get size () { return this._size }
+  get overlay () { return this._overlay }
+
+  get hasCaret () { return this._hasCaret }
+  get caretBlink () { return this._caretBlink }
+  get caretSprite () { return this._caretSprite }
+  get caretVisible () { return this._caretSprite.visible }
+  set caretVisible (value) {
+    if (value !== this._caretSprite.visible) {
+      this._caretSprite.visible = value
+      RCS.video.force_update = true
+    }
+  }
+
+  get caret () { return { x: this._caretx, y: this._carety } }
+  set caret (value) {
+    if (value.x !== this._caretx || value.y !== this._carety) {
+      this._caretx = _.clamp(value.x, 1, this._width)
+      this._carety = _.clamp(value.y, 1, this._height)
+      this.updateCaretPosition()
+    }
+  }
+
+  get caretx () { return this._caretx }
+  set caretx (value) {
+    if (value !== this._caretx) {
+      this._caretx = _.clamp(value, 1, this._width)
+      this.updateCaretPosition()
+    }
+  }
+
+  get carety () { return this._carety }
+  set carety (value) {
+    if (value !== this._carety) {
+      this._carety = _.clamp(value, 1, this._height)
+      this.updateCaretPosition()
+    }
+  }
+
+  showCaret () {
+    this._caretVisible = true
+  }
+
+  hideCaret () {
+    this._caretVisible = false
+  }
+
+  toggleCaret () {
+    this.caretVisible = !this.caretVisible
+  }
+
+  updateCaretPosition () {
+    let x = this._caretx - 1
+    let y = this._carety - 1
+    this._caretSprite.position = new PIXI.Point(x * this._font.width, y * this._font.height)
+    RCS.video.force_update = true
+  }
 
   tick (t) {
+    if (this._hasCaret && this._caretBlink > 0 && t - this._lastBlink > this._caretBlink) {
+      this._lastBlink = t
+      this.toggleCaret()
+    }
   }
 
   reset () {
-    RCS.video.force_update = false
-
     this.bos()
 
     if (this._buffer) {
@@ -39,6 +133,12 @@ class TTY extends Emitter {
     }
     this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
 
+    if (this._video_buffer) {
+      this._video_buffer.free()
+      this._video_buffer = undefined
+    }
+    this._video_buffer = RCS.memoryManager.alloc(RCS.i8, this._width * this._font.width * this._height * this._font.height)
+
     this.clear()
   }
 
@@ -46,6 +146,10 @@ class TTY extends Emitter {
     if (this._buffer) {
       this.array.fill(0)
     }
+    if (this._video_buffer) {
+      this.video_array.fill(0)
+    }
+    this.flip()
   }
 
   shut () {
@@ -53,6 +157,17 @@ class TTY extends Emitter {
       this._buffer.free()
       this._buffer = undefined
     }
+
+    if (this._video_buffer) {
+      this._video_buffer.free()
+      this._video_buffer = undefined
+    }
+
+    RCS.overlays.containers.sprite.removeChild(this._overlay.sprite)
+
+    this._overlay.shut()
+
+    RCS.main.removeTick(this)
   }
 
   draw (screenx = 0, screeny = 0) {
@@ -61,12 +176,12 @@ class TTY extends Emitter {
       let ch = this._font.height
       let tw = this._width
       let th = this._height
-      let w = RCS.video.width
+      let w = this._overlay.width
       let fnt_sz = this._font.char_size
 
       var fnt_mem = this._font.array
       var mem = this.array
-      var video_mem = RCS.video.array
+      var video_mem = this.video_array
 
       let idx = 0
       for (let y = 0; y < th; y++) {
@@ -87,13 +202,17 @@ class TTY extends Emitter {
         }
       }
 
-      this.refresh()
+      this.flip()
+      RCS.video.force_update = true
     }
   }
 
-  refresh (flip = true) {
-    RCS.video.refresh(flip)
-    RCS.video.force_update = true
+  flip () {
+    this._overlay.flip(this.video_array)
+  }
+
+  update () {
+    this.draw()
   }
 
   index (x, y) {
@@ -142,56 +261,60 @@ class TTY extends Emitter {
     return this.print(text + '\n', fg, bg)
   }
 
-  get caret () { return { x: this._caretx, y: this._carety } }
-  set caret (value) {
-    if (value.x !== this._caretx || value.y !== this._carety) {
-      this._caretx = _.clamp(value.x, 1, this._width)
-      this._carety = _.clamp(value.y, 1, this._height)
-    }
-  }
-
-  get caretx () { return this._caretx }
-  set caretx (value) {
-    if (value !== this._caretx) {
-      this._caretx = _.clamp(value, 1, this._width)
-    }
-  }
-
-  get carety () { return this._carety }
-  set carety (value) {
-    if (value !== this._carety) {
-      this._carety = _.clamp(value, 1, this._height)
-    }
-  }
-
   move_to (x, y) {
     this.caretx = x
     this.carety = y
   }
 
-  move_by (x, y) { return this.move_to(this._caretx + x, this._carety + y) }
+  move_by (x, y) {
+    return this.move_to(this._caretx + x, this._carety + y)
+  }
 
-  bol () { return this.move_to(1, this._carety) }
+  bol () {
+    return this.move_to(CARET_TOP_X, this._carety)
+  }
 
-  eol () { return this.move_to(this._width, this._carety) }
+  eol () {
+    return this.move_to(this._width, this._carety)
+  }
 
-  bos () { return this.move_to(1, 1) }
+  bos () {
+    return this.move_to(CARET_TOP_X, CARET_TOP_Y)
+  }
 
-  eos () { return this.move_to(this._width, this._height) }
+  eos () {
+    return this.move_to(this._width, this._height)
+  }
 
-  bs () { this.left(); this.put_char(' '); return this.left() }
+  bs () {
+    this.left()
+    this.put_char(' ')
+    return this.left()
+  }
 
-  cr () { return this.move_to(1, this._carety + 1) }
+  cr () {
+    return this.move_to(CARET_TOP_X, this._carety + 1)
+  }
 
-  lf () { return this.move_to(this._caretx, this._carety + 1) }
+  lf () {
+    return this.move_to(this._caretx, this._carety + 1)
+  }
 
-  up () { return this.move_to(this._caretx, this._carety - 1) }
+  up () {
+    return this.move_to(this._caretx, this._carety - 1)
+  }
 
-  left () { return this.move_to(this._caretx - 1, this._carety) }
+  left () {
+    return this.move_to(this._caretx - 1, this._carety)
+  }
 
-  down () { return this.move_to(this._caretx, this._carety + 1) }
+  down () {
+    return this.move_to(this._caretx, this._carety + 1)
+  }
 
-  right () { return this.move_to(this._caretx + 1, this._carety) }
+  right () {
+    return this.move_to(this._caretx + 1, this._carety)
+  }
 
   clear_eol () {
     let { x, y } = this.caret

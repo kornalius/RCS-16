@@ -15,7 +15,6 @@ const { Doc } = require('./classes/db/doc')
 const { Table } = require('./classes/db/table')
 const { FS } = require('./classes/db/fs')
 
-const { sizes } = require('./classes/memory')
 const { MemoryManager } = require('./classes/memorymanager')
 
 const { Stack } = require('./classes/stack')

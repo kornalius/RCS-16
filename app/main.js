@@ -24,6 +24,8 @@ class Main extends Emitter {
 
     this._tickBound = this.tick.bind(this)
     PIXI.ticker.shared.add(this._tickBound)
+
+    this._ticks = []
   }
 
   reset () {
@@ -44,6 +46,8 @@ class Main extends Emitter {
 
     RCS.memoryManager.shut()
   }
+
+  get ticks () { return this._ticks }
 
   get state () { return this._state }
   set state (value) {
@@ -143,6 +147,10 @@ class Main extends Emitter {
       }
 
       RCS.memoryManager.tick(t, delta)
+
+      for (let tt of this._ticks) {
+        tt.tick(t)
+      }
     }
   }
 
@@ -161,6 +169,18 @@ class Main extends Emitter {
 
     await RCS.mouse.boot()
     await RCS.keyboard.boot()
+  }
+
+  addTick (obj) {
+    this._ticks.push(obj)
+  }
+
+  removeTick (obj) {
+    _.pull(this._ticks, obj)
+  }
+
+  clearTicks () {
+    this._ticks = []
   }
 
 }

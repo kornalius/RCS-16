@@ -101,7 +101,7 @@ class Palette extends Emitter {
   clear () {
     if (this._buffer) {
       this.array.fill(0)
-      RCS.video.refresh()
+      RCS.video.update()
     }
   }
 
@@ -120,8 +120,8 @@ class Palette extends Emitter {
     this.array[c] = this.rgba_to_num(r, g, b, a)
   }
 
-  refresh (flip = true) {
-    RCS.video.refresh(flip)
+  update (flip = true) {
+    RCS.video.update(flip)
     RCS.video.force_update = true
   }
 

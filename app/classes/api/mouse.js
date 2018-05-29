@@ -206,7 +206,7 @@ class Mouse extends Emitter {
 
       this._push(e)
 
-      RCS.video.refresh(false)
+      RCS.video.update(false)
     }
   }
 

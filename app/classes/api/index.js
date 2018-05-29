@@ -3,7 +3,7 @@
  */
 
 const { Video } = require('./video')
-const { Overlays } = require('./overlays')
+const { Overlays, Overlay, ContainerOverlay } = require('./overlays')
 const { Palette } = require('./palette')
 const { Sprite } = require('./sprite')
 const { Mouse } = require('./mouse')
@@ -15,6 +15,15 @@ const { Font } = require('./font')
 
 RCS.Font = Font
 RCS.TTY = TTY
+RCS.Video = Video
+RCS.Palette = Palette
+RCS.Sprite = Sprite
+RCS.Mouse = Mouse
+RCS.Keyboard = Keyboard
+RCS.Sound = Sound
+RCS.Overlays = Overlays
+RCS.ContainerOverlay = ContainerOverlay
+RCS.Overlay = Overlay
 
 RCS.video = new Video()
 RCS.palette = new Palette()
