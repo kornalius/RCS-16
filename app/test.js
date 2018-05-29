@@ -13,7 +13,7 @@ class Test extends Emitter {
       RCS.console = new RCS.TTY({ font })
 
       RCS.console.println('Welcome to RCS-16', 45)
-      RCS.console.print('Copyright (c) 2018, ArianeSoft Inc.', 8)
+      RCS.console.println('Copyright (c) 2018, ArianeSoft Inc.', 8)
 
       RCS.sound.load('boot', 'boot.wav')
       RCS.sound.load('boot2', 'boot2.wav')
@@ -26,10 +26,15 @@ class Test extends Emitter {
       // let n = RCS.sound.note(m)
       // RCS.sound.play(n)
 
-      RCS.console.draw()
-
       let fn = await RCS.main.compile(undefined, path.join(RCS.DIRS.cwd, '/app', 'test.rcs'), true)
       fn()
+
+      RCS.console.print('\n>')
+      RCS.console.draw()
+
+      let r = new RCS.Readline(RCS.console)
+      r.start()
+      r.on('end', e => console.log(e.detail))
     })
   }
 

@@ -18,6 +18,9 @@ const { FS } = require('./classes/db/fs')
 const { MemoryManager } = require('./classes/memorymanager')
 
 const { Stack } = require('./classes/stack')
+const { Struct } = require('./classes/struct')
+
+const { Readline } = require('./classes/readline')
 
 const { Test } = require('./test')
 
@@ -113,6 +116,9 @@ class RCSClass {
   get FS () { return FS }
 
   get Stack () { return Stack }
+  get Struct () { return Struct }
+
+  get Readline () { return Readline }
 
   get main () {
     if (!_main) {

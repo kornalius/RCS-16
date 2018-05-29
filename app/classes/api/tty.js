@@ -63,6 +63,17 @@ class TTY extends Emitter {
   get overlay () { return this._overlay }
 
   get hasCaret () { return this._hasCaret }
+  set hasCaret (value) {
+    if (value !== this._hasCaret) {
+      this._hasCaret = value
+      if (value) {
+        this.showCaret()
+      }
+      else {
+        this.hideCaret()
+      }
+    }
+  }
   get caretBlink () { return this._caretBlink }
   get caretSprite () { return this._caretSprite }
   get caretVisible () { return this._caretSprite.visible }
@@ -99,11 +110,11 @@ class TTY extends Emitter {
   }
 
   showCaret () {
-    this._caretVisible = true
+    this.caretVisible = true
   }
 
   hideCaret () {
-    this._caretVisible = false
+    this.caretVisible = false
   }
 
   toggleCaret () {
@@ -224,13 +235,13 @@ class TTY extends Emitter {
     return { start: y * l, end: (y + 1) * l - 3, length: l }
   }
 
-  char_at (x, y) {
+  charAt (x, y) {
     let tidx = this.index(x, y)
     let mem = this.array
     return { ch: mem[tidx], fg: mem[tidx + 1], bg: mem[tidx + 2] }
   }
 
-  put_char (ch, fg = 2, bg = 0) {
+  putChar (ch, fg = 2, bg = 0) {
     switch (ch.charCodeAt(0)) {
       case 13:
       case 10:
@@ -252,7 +263,7 @@ class TTY extends Emitter {
 
   print (text, fg, bg) {
     for (let c of text) {
-      this.put_char(c, fg, bg)
+      this.putChar(c, fg, bg)
     }
     return this
   }
@@ -261,90 +272,90 @@ class TTY extends Emitter {
     return this.print(text + '\n', fg, bg)
   }
 
-  move_to (x, y) {
+  moveTo (x, y) {
     this.caretx = x
     this.carety = y
   }
 
-  move_by (x, y) {
-    return this.move_to(this._caretx + x, this._carety + y)
+  moveBy (x, y) {
+    return this.moveTo(this._caretx + x, this._carety + y)
   }
 
   bol () {
-    return this.move_to(CARET_TOP_X, this._carety)
+    return this.moveTo(CARET_TOP_X, this._carety)
   }
 
   eol () {
-    return this.move_to(this._width, this._carety)
+    return this.moveTo(this._width, this._carety)
   }
 
   bos () {
-    return this.move_to(CARET_TOP_X, CARET_TOP_Y)
+    return this.moveTo(CARET_TOP_X, CARET_TOP_Y)
   }
 
   eos () {
-    return this.move_to(this._width, this._height)
+    return this.moveTo(this._width, this._height)
   }
 
   bs () {
     this.left()
-    this.put_char(' ')
+    this.putChar(' ')
     return this.left()
   }
 
   cr () {
-    return this.move_to(CARET_TOP_X, this._carety + 1)
+    return this.moveTo(CARET_TOP_X, this._carety + 1)
   }
 
   lf () {
-    return this.move_to(this._caretx, this._carety + 1)
+    return this.moveTo(this._caretx, this._carety + 1)
   }
 
   up () {
-    return this.move_to(this._caretx, this._carety - 1)
+    return this.moveTo(this._caretx, this._carety - 1)
   }
 
   left () {
-    return this.move_to(this._caretx - 1, this._carety)
+    return this.moveTo(this._caretx - 1, this._carety)
   }
 
   down () {
-    return this.move_to(this._caretx, this._carety + 1)
+    return this.moveTo(this._caretx, this._carety + 1)
   }
 
   right () {
-    return this.move_to(this._caretx + 1, this._carety)
+    return this.moveTo(this._caretx + 1, this._carety)
   }
 
-  clear_eol () {
+  clearEol () {
     let { x, y } = this.caret
     let s = this.index(x, y)
     this.array.fill(0, s, this.index(this._width, y) - s)
   }
 
-  clear_eos () {
+  clearEos () {
     let { x, y } = this.caret
     let s = this.index(x, y)
     this.array.fill(0, s, this._size - s)
   }
 
-  clear_bol () {
+  clearBol () {
     let { x, y } = this.caret
     let s = this.index(x, y)
     this.array.fill(0, s, this.index(1, y) - s)
   }
 
-  clear_bos () {
+  clearBos () {
     let { x, y } = this.caret
     this.array.fill(0, 0, this.index(x, y) - 1)
   }
 
-  copy_line (sy, ty) {
+  copyLine (sy, ty) {
     let si = this.line(sy)
     this.array.copy(si.start, this.line(ty), si.length)
   }
 
-  copy_col (sx, tx) {
+  copyCol (sx, tx) {
     let mem = this.array
     sx *= 3
     tx *= 3
@@ -354,18 +365,23 @@ class TTY extends Emitter {
     }
   }
 
-  erase_line (y) {
+  eraseLine (y) {
     let i = this.line(y)
     this.array.fill(0, i.start, i.length)
   }
 
-  erase_col (x) {
+  eraseCol (x) {
     let mem = this.array
     let ls = this.line(0).start + x * 3
     for (let y = 0; y < this._height; y++) {
       mem.fill(0, ls, 3)
       ls += this._width * 3
     }
+  }
+
+  set (text) {
+    this.clear()
+    this.print(text)
   }
 
   scroll (dy) {

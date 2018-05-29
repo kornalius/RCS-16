@@ -23,7 +23,6 @@ class Sprite extends Emitter {
     for (let by = 0; by < height; by++) {
       let pi = by * width
       for (let bx = 0; bx < width; bx++) {
-        console.log(RCS.palette.get(mem[ptr]))
         pixels[pi++] = RCS.palette.get(mem[ptr++])
       }
     }
