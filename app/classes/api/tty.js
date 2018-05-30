@@ -122,9 +122,7 @@ class TTY extends Emitter {
   }
 
   updateCaretPosition () {
-    let x = this._caretx - 1
-    let y = this._carety - 1
-    this._caretSprite.position = new PIXI.Point(x * this._font.width, y * this._font.height)
+    this._caretSprite.position = new PIXI.Point((this._caretx - 1) * this._font.width, (this._carety - 1) * this._font.height)
     RCS.video.force_update = true
   }
 
@@ -193,6 +191,7 @@ class TTY extends Emitter {
       var fnt_mem = this._font.array
       var mem = this.array
       var video_mem = this.video_array
+      video_mem.fill(0)
 
       let idx = 0
       for (let y = 0; y < th; y++) {
@@ -275,6 +274,7 @@ class TTY extends Emitter {
   moveTo (x, y) {
     this.caretx = x
     this.carety = y
+    this._lastBlink = 0
   }
 
   moveBy (x, y) {
@@ -330,29 +330,29 @@ class TTY extends Emitter {
   clearEol () {
     let { x, y } = this.caret
     let s = this.index(x, y)
-    this.array.fill(0, s, this.index(this._width, y) - s)
+    this.array.fill(0, s, this.index(this._width, y) + 3)
   }
 
   clearEos () {
     let { x, y } = this.caret
     let s = this.index(x, y)
-    this.array.fill(0, s, this._size - s)
+    this.array.fill(0, s, this._size + 3)
   }
 
   clearBol () {
     let { x, y } = this.caret
     let s = this.index(x, y)
-    this.array.fill(0, s, this.index(1, y) - s)
+    this.array.fill(0, s, this.index(1, y) + 3)
   }
 
   clearBos () {
     let { x, y } = this.caret
-    this.array.fill(0, 0, this.index(x, y) - 1)
+    this.array.fill(0, 0, this.index(x - 1, y) + 3)
   }
 
   copyLine (sy, ty) {
     let si = this.line(sy)
-    this.array.copy(si.start, this.line(ty), si.length)
+    this.array.copy(si.start, this.line(ty), si.end + 3)
   }
 
   copyCol (sx, tx) {
@@ -361,20 +361,20 @@ class TTY extends Emitter {
     tx *= 3
     for (let y = 0; y < this._height; y++) {
       let i = this.line(y)
-      mem.copy(i.start + sx, i.start + tx, 3)
+      mem.copy(i.start + sx, i.start + tx, i.start + tx + 3)
     }
   }
 
   eraseLine (y) {
     let i = this.line(y)
-    this.array.fill(0, i.start, i.length)
+    this.array.fill(0, i.start, i.end + 3)
   }
 
   eraseCol (x) {
     let mem = this.array
     let ls = this.line(0).start + x * 3
     for (let y = 0; y < this._height; y++) {
-      mem.fill(0, ls, 3)
+      mem.fill(0, ls, ls + 3)
       ls += this._width * 3
     }
   }
@@ -390,14 +390,14 @@ class TTY extends Emitter {
       this.array.copy(i.start, 0, this._size)
       i = this.line(dy)
       let s = i.start
-      this.array.fill(0, s, this._size - s)
+      this.array.fill(0, s, this._size + 3)
     }
     else if (dy < 0) {
       let i = this.line(dy + 1)
-      this.array.copy(i.start, 0, this._size)
+      this.array.copy(i.start, 0, this._size + 3)
       i = this.line(dy)
       let s = i.start
-      this.array.fill(0, s, this._size - s)
+      this.array.fill(0, s, this._size + 3)
     }
   }
 

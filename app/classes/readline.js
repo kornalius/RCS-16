@@ -88,6 +88,9 @@ class Readline extends Emitter {
         if (e.metaKey) {
           this.moveToStart()
         }
+        else if (e.ctrlKey) {
+          this.moveByWord(-1)
+        }
         else {
           this.moveBy(-1)
         }
@@ -97,9 +100,20 @@ class Readline extends Emitter {
         if (e.metaKey) {
           this.moveToEnd()
         }
+        else if (e.ctrlKey) {
+          this.moveByWord(1)
+        }
         else {
           this.moveBy(1)
         }
+        break
+
+      case 'Home':
+        this.moveToStart()
+        break
+
+      case 'End':
+        this.moveToEnd()
         break
 
       case 'Escape':
@@ -113,6 +127,7 @@ class Readline extends Emitter {
       default:
         if (e.key.length === 1) {
           this.insert(this._cursor, e.key)
+          this.moveBy(1)
         }
         break
 
@@ -134,6 +149,64 @@ class Readline extends Emitter {
     return this
   }
 
+  get words () {
+    const alphanum = _.map('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', s => s.charCodeAt(0))
+    let words = []
+    let s = 0
+    let w
+    let t = this.text
+    for (let i = 0; i < t.length; i++) {
+      if (_.includes(alphanum, t.charCodeAt(i))) {
+        if (!w) {
+          w = ''
+          s = i
+        }
+        w += t.charAt(i)
+      }
+      else if (w) {
+        words.push({ text: w, start: s, end: s + w.length, length: w.length })
+        w = undefined
+        s = 0
+      }
+    }
+
+    if (w) {
+      words.push({ text: w, start: s, end: s + w.length, length: w.length })
+    }
+
+    return words
+  }
+
+  getWordAt (x) {
+    let i = 0
+    for (let w of this.words) {
+      if (x >= w.start && x <= w.end) {
+        return i
+      }
+      i++
+    }
+    return -1
+  }
+
+  moveByWord (c = 1) {
+    let i = this.getWordAt(this._cursor)
+    let w = _.get(this.words, i)
+    if (w) {
+      if (c < 0 && this._cursor > w.start) {
+        this.cursor = w.start
+      }
+      else if (c > 0 && this._cursor < w.end) {
+        this.cursor = w.end
+      }
+      else {
+        w = _.get(this.words, i + c)
+        if (w) {
+          this.cursor = c < 0 ? w.start : w.end
+        }
+      }
+    }
+  }
+
   updateCursor () {
     this.tty.moveTo(this._startPos.x + this._cursor, this._startPos.y)
     return this
@@ -143,6 +216,7 @@ class Readline extends Emitter {
     this.tty.moveTo(this._startPos.x, this._startPos.y)
     this.tty.clearEol()
     this.tty.print(this._text)
+    this.updateCursor()
     this.tty.update()
     return this
   }
@@ -155,7 +229,7 @@ class Readline extends Emitter {
   insert (i, text) {
     let t = this._text
     if (i >= 0 && i < this.length) {
-      t = t.substring(0, i - 1) + text + t.substring(i)
+      t = t.substring(0, i) + text + t.substring(i)
     }
     else {
       t += text
@@ -167,7 +241,7 @@ class Readline extends Emitter {
   delete (i, c = 1) {
     let t = this._text
     if (i >= 0 && i < this.length) {
-      t = t.splice(i, i + c - 1)
+      t = t.substring(0, i) + t.substring(i + c)
     }
     this.text = t
     return this
