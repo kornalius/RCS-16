@@ -189,41 +189,43 @@ class Font extends Emitter {
   }
 
   async _load_fnt () {
-    let b = new BDF()
-    let ff = await fs.readFile(RCS.DIRS.cwd + '/fonts/' + this._path + '.bdf', 'utf-8')
-    b.load(ff)
-    this._bdf = b
+    if (!fontCache[this._path]) {
+      let b = new BDF()
+      let ff = await fs.readFile(RCS.DIRS.cwd + '/fonts/' + this._path + '.bdf', 'utf-8')
+      b.load(ff)
+      this._bdf = b
 
-    this._char_size = this.width * this.height
-    this._size = this.count * this._char_size
+      this._char_size = this.width * this.height
+      this._size = this.count * this._char_size
 
-    if (this._buffer) {
-      this._buffer.free()
-    }
-    this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
+      if (this._buffer) {
+        this._buffer.free()
+      }
+      this._buffer = RCS.memoryManager.alloc(RCS.i8, this._size)
 
-    let baseline = this.ascent + this.descent + this.offsety
-    let cw = this.width
-    let fnt_sz = this._char_size
-    let osx = this.offsetx
-    let mem = this.array
+      let baseline = this.ascent + this.descent + this.offsety
+      let cw = this.width
+      let fnt_sz = this._char_size
+      let osx = this.offsetx
+      let mem = this.array
 
-    for (let k in b.glyphs) {
-      let g = b.glyphs[k]
-      let bb = g.boundingBox
-      let dsc = baseline - bb.height - bb.y
-      let ptr = g.code * fnt_sz
+      for (let k in b.glyphs) {
+        let g = b.glyphs[k]
+        let bb = g.boundingBox
+        let dsc = baseline - bb.height - bb.y
+        let ptr = g.code * fnt_sz
 
-      for (let y = 0; y < bb.height; y++) {
-        let p = ptr + (y + dsc) * cw
-        for (let x = 0; x < bb.width; x++) {
-          mem[p + x + bb.x + osx] |= g.bitmap[y][x]
+        for (let y = 0; y < bb.height; y++) {
+          let p = ptr + (y + dsc) * cw
+          for (let x = 0; x < bb.width; x++) {
+            mem[p + x + bb.x + osx] |= g.bitmap[y][x]
+          }
         }
       }
-    }
 
-    this._id = fontCacheIndex++
-    fontCache[this._path] = this
+      this._id = fontCacheIndex++
+      fontCache[this._path] = this
+    }
 
     this.emit('loaded')
   }

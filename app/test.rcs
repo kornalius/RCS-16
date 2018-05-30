@@ -50,3 +50,6 @@ i+=10
 print i, "done"
 
 main.error 'ERROR'
+
+let t = new TTY()
+t.showCaret

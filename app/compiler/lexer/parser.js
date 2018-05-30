@@ -18,6 +18,7 @@ class Parser extends Emitter {
       print: function () { console.log(...arguments) },
       console: RCS.console,
       main: RCS.main,
+      TTY: RCS.TTY,
     }
   }
 
@@ -155,7 +156,22 @@ class Parser extends Emitter {
     this._frames.start('PROGRAM', TOKENS.GLOBALS, true)
 
     for (let key in Parser.globals) {
-      this._frames.add(key, TOKENS.ID, Parser.globals[key])
+      let v = Parser.globals[key]
+      let isClass = _.isClass(v)
+      let fi = this._frames.add(key, isClass ? TOKENS.CLASS : TOKENS.ID, v)
+      if (isClass) {
+        let f = this._frames.start(key, TOKENS.CLASS, false)
+        fi._classFrame = f
+
+        for (let propName of Object.getOwnPropertyNames(v.prototype)) {
+          let desc = Object.getOwnPropertyDescriptor(v.prototype, propName)
+          if (desc && _.isFunction(desc.value)) {
+            this._frames.add(propName, TOKENS.FN, desc.value)
+          }
+        }
+
+        this._frames.end(false)
+      }
     }
 
     let nodes = this.statements()

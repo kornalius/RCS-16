@@ -157,7 +157,8 @@ class Expression extends Statement {
 
     let f = this._frames.exists(id.value, TOKENS.CLASS)
     if (!f) {
-      this.error(id, 'undeclared class')
+      this.prev()
+      this.error('undeclared class')
       return undefined
     }
 

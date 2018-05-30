@@ -194,6 +194,10 @@ _.isUUID = function (value) {
   return utils.isUUID(value)
 }
 
+_.isClass = function (value) {
+  return /^class\s/.test(value.toString())
+}
+
 const Main = require('./main')
 
 RCS.main.on('start', async () => {
