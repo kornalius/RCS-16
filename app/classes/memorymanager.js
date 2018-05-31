@@ -77,7 +77,7 @@ class MemoryManager extends Emitter {
       if (!b.active && b.size >= size) {
         if (b.size === size) {
           b._active = true
-          return b.top
+          return b
         }
 
         let ob = b.bottom

@@ -5,6 +5,7 @@
 const { Emitter } = require('./mixins/common/events')
 const { Compiler } = require('./compiler/compiler')
 const { fs } = require('./utils')
+const { loadFonts } = require('./classes/api/font')
 
 const _VIDEO_ = true
 
@@ -63,6 +64,7 @@ class Main extends Emitter {
   start () {
     if (!this.isRunning) {
       this.state = RUNNING
+      loadFonts()
       this.emit('start')
     }
     return this

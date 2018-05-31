@@ -12,6 +12,10 @@ class TTY extends Emitter {
   constructor (options = {}) {
     super()
 
+    if (options instanceof RCS.Font) {
+      options = { font: options }
+    }
+
     options = _.extend({
       font: undefined,
       width: 120,
@@ -74,6 +78,7 @@ class TTY extends Emitter {
       }
     }
   }
+
   get caretBlink () { return this._caretBlink }
   get caretSprite () { return this._caretSprite }
   get caretVisible () { return this._caretSprite.visible }

@@ -51,5 +51,7 @@ print i, "done"
 
 main.error 'ERROR'
 
-let t = new TTY()
-t.showCaret
+// let t = new TTY()
+// t.showCaret
+
+console.println '\nThis is a test!', 34

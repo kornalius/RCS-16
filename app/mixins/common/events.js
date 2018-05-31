@@ -58,6 +58,7 @@ const EventsManager = Mixin(superclass => class EventsManager extends superclass
     this._listeners[name] = this._listeners[name] || []
     this._listeners[name].push({ fn, order: options.order || 0 })
     this._listeners[name] = _.sortBy(this._listeners[name], 'order')
+
     return this
   }
 

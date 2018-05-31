@@ -19,6 +19,8 @@ const FONTBANK = {
   extra_large_bold_italic: { path: '14x14BO' },
 }
 
+let fonts = []
+
 class BDF {
 
   constructor () {
@@ -136,8 +138,6 @@ class BDF {
   }
 }
 
-let fontCache = {}
-let fontCacheIndex = 0
 
 class Font extends Emitter {
 
@@ -161,7 +161,7 @@ class Font extends Emitter {
     this._offsetY = offsety
     this._count = count
 
-    this._load_fnt(this._path, this._width, this._height, this._offsetx, this._offsety, this._count)
+    this.load()
   }
 
   get buffer () { return this._buffer }
@@ -184,12 +184,14 @@ class Font extends Emitter {
   get char_size () { return this._char_size }
 
   shut () {
+    _.pull(fonts, this)
+
     this._buffer.free()
     this._buffer = undefined
   }
 
-  async _load_fnt () {
-    if (!fontCache[this._path]) {
+  async load () {
+    if (!fonts[this._path]) {
       let b = new BDF()
       let ff = await fs.readFile(RCS.DIRS.cwd + '/fonts/' + this._path + '.bdf', 'utf-8')
       b.load(ff)
@@ -223,19 +225,32 @@ class Font extends Emitter {
         }
       }
 
-      this._id = fontCacheIndex++
-      fontCache[this._path] = this
+      fonts.push(this)
     }
 
     this.emit('loaded')
+
+    return this
   }
 
 }
 
+const loadFonts = async function () {
+  for (let k in FONTBANK) {
+    await new Font(FONTBANK[k].path).load()
+  }
+  RCS.main.emit('fonts-loaded')
+}
+
+const getFont = function (name) {
+  return _.find(fonts, { name })
+}
+
 module.exports = {
   FONTBANK,
-  fontCache,
-  fontCacheIndex,
+  fonts,
   BDF,
   Font,
+  loadFonts,
+  getFont,
 }
