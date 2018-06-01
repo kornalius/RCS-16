@@ -8,13 +8,13 @@ const { fs } = require('../../utils')
 const FONTBANK = {
   tiny: { path: '4x6' },
   normal: { path: '6x10' },
-  normal_bold: { path: '6x10b' },
+  normal_bold: { path: '6x10B' },
   normal_italic: { path: '6x10O' },
   normal_bold_italic: { path: '6x10BO' },
   large: { path: '8x13' },
-  large_bold: { path: '8x13b' },
+  large_bold: { path: '8x13B' },
   extra_large: { path: '14x14' },
-  extra_large_bold: { path: '14x14b' },
+  extra_large_bold: { path: '14x14B' },
   extra_large_italic: { path: '14x14O' },
   extra_large_bold_italic: { path: '14x14BO' },
 }
